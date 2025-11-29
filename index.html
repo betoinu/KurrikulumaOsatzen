@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Curriculum Kudeatzailea (Google Auth)</title>
+    <title>Curriculum Kudeatzailea (Supabase)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -27,15 +27,6 @@
             align-items: center;
             z-index: 50;
         }
-        /* Style for the Google Sign-in button */
-        #googleSignInBtn {
-            background-color: #4285F4; /* Google Blue */
-            color: white;
-            transition: background-color 0.3s;
-        }
-        #googleSignInBtn:hover {
-            background-color: #357ae8;
-        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
@@ -55,45 +46,39 @@
             
             <div class="flex flex-wrap gap-2 md:gap-4 items-center justify-end">
                 
-                <!-- JSON Karga Botoia (Lehengo tokikoa, orain goiburuan) -->
-                <button id="localJsonLoadBtn" onclick="window.loadLocalJsonData()" class="bg-yellow-500 hover:bg-yellow-600 px-3 py-1.5 rounded transition flex items-center text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hidden" title="Kargatu aurrez kargatutako JSON datuak berrezartzeko">
+                <!-- JSON Karga Botoia -->
+                <button id="localJsonLoadBtn" class="bg-yellow-500 hover:bg-yellow-600 px-3 py-1.5 rounded transition flex items-center text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hidden" title="Kargatu aurrez kargatutako JSON datuak berrezartzeko">
                     <i class="fas fa-file-upload mr-2"></i> Kargatu Tokiko JSON
                 </button>
                 
-				<!-- GEHITU HAU BOTOIEN ONDOREN: -->
-				<button onclick="uploadJsonFile()" class="bg-purple-500 hover:bg-purple-600 px-3 py-1.5 rounded transition flex items-center text-sm">
-					<i class="fas fa-file-upload mr-2"></i> Kargatu JSON
-				</button>
-				<input type="file" id="jsonFileInput" accept=".json" class="hidden">
-				
-				<!-- SUPABASE BOTOI BERRIAK - GEHITU HAU -->
-				<button onclick="supabaseIkusiDatuak()" class="bg-indigo-600 hover:bg-indigo-800 px-3 py-1.5 rounded transition flex items-center text-sm">
-					<i class="fas fa-database mr-2"></i> Supabase Datuak
-				</button>
-				
-				<button onclick="supabaseGehituDatuak()" class="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded transition flex items-center text-sm">
-					<i class="fas fa-cloud-upload-alt mr-2"></i> Gorde Supabase
-				</button>
-				
+                <!-- JSON Fitxategia Kargatzeko Botoia -->
+                <button id="uploadJsonBtn" class="bg-purple-500 hover:bg-purple-600 px-3 py-1.5 rounded transition flex items-center text-sm">
+                    <i class="fas fa-file-upload mr-2"></i> Kargatu JSON
+                </button>
+                <input type="file" id="jsonFileInput" accept=".json" class="hidden">
+                
+                <!-- Supabase Botoiak -->
+                <button id="supabaseViewBtn" class="bg-indigo-600 hover:bg-indigo-800 px-3 py-1.5 rounded transition flex items-center text-sm">
+                    <i class="fas fa-database mr-2"></i> Supabase Datuak
+                </button>
+                
+                <button id="supabaseSaveBtn" class="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded transition flex items-center text-sm">
+                    <i class="fas fa-cloud-upload-alt mr-2"></i> Gorde Supabase
+                </button>
+                
                 <!-- JSON Deskarga Botoia (Segurtasun Kopia) -->
-                <button onclick="window.downloadJsonData()" class="bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded transition flex items-center text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" id="downloadBackupBtn" disabled>
+                <button id="downloadBackupBtn" class="bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded transition flex items-center text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                     <i class="fas fa-download mr-2"></i> Deskargatu JSON
                 </button>
                 
                 <!-- Gorde Botoia (Lankidetza) -->
-                <button onclick="window.saveAllDataToFirestore()" class="bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded transition flex items-center text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" id="saveBtn" disabled>
+                <button id="saveBtn" class="bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded transition flex items-center text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                     <i class="fas fa-save mr-2"></i> Aldaketak Gorde
                 </button>
                 
                 <!-- Erabiltzailearen Egoera -->
                 <span id="authStatusContainer" class="flex items-center gap-2">
-                    <span id="userIdDisplay" class="text-xs bg-indigo-500 px-2 py-1 rounded-full italic font-mono truncate max-w-[100px] sm:max-w-xs">Anonimoa</span>
-                    <button id="googleSignInBtn" onclick="window.signInWithGoogle()" class="px-3 py-1 rounded transition flex items-center text-sm hidden">
-                        <i class="fab fa-google mr-1"></i> Saioa hasi
-                    </button>
-                    <button id="signOutBtn" onclick="window.signOutUser()" class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded transition flex items-center text-sm hidden">
-                        <i class="fas fa-sign-out-alt"></i> Irten
-                    </button>
+                    <span id="userIdDisplay" class="text-xs bg-indigo-500 px-2 py-1 rounded-full italic font-mono truncate max-w-[100px] sm:max-w-xs">Supabase</span>
                 </span>
             </div>
         </div>
@@ -106,7 +91,7 @@
         <aside class="w-full md:w-1/3 bg-white p-6 rounded-lg shadow-md h-fit">
             <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Irakasgaiak Aukeratu</h2>
             
-            <div id="noDataMessage" class="text-center text-gray-500 py-8">
+            <div id="noDataMessage" class="text-center text-gray-500 py-8 hidden">
                 <i class="fas fa-lock text-4xl mb-3"></i>
                 <p>Curriculum datuak kargatzeko, mesedez **hasi saioa Google-rekin**.</p>
                 <p class="text-xs mt-2">Datu-basea lankideekin partekatzeko erabilgarria da.</p>
@@ -117,7 +102,7 @@
                 <!-- Gradua Hautatu -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Gradua</label>
-                    <select id="degreeSelect" class="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" onchange="window.onDegreeChange()">
+                    <select id="degreeSelect" class="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                         <option value="">-- Aukeratu Gradua --</option>
                     </select>
                 </div>
@@ -163,26 +148,22 @@
                         <!-- Arloa/Eremua -->
                         <div>
                             <label class="block text-sm text-gray-600 mb-1">Arloa / Eremua</label>
-                            <input type="text" id="subjectArea" class="w-full border p-2 rounded focus:outline-none focus:border-indigo-500" 
-                                onchange="window.updateSubjectData('arloa', this.value)">
+                            <input type="text" id="subjectArea" class="w-full border p-2 rounded focus:outline-none focus:border-indigo-500">
                         </div>
                         <!-- Irakasgaiaren Izena (editagarria) -->
                         <div>
                             <label class="block text-sm text-gray-600 mb-1">Irakasgaiaren Izena</label>
-                            <input type="text" id="subjectNameEdit" class="w-full border p-2 rounded focus:outline-none focus:border-indigo-500" 
-                                onchange="window.updateSubjectName(this.value)">
+                            <input type="text" id="subjectNameEdit" class="w-full border p-2 rounded focus:outline-none focus:border-indigo-500">
                         </div>
                     </div>
 
                     <!-- Ikaskuntza Emaitza Ofizialak (lerro bakoitza elementu bat) -->
                     <div>
                         <label class="block text-sm text-gray-600 mb-1">Ikaskuntza Emaitza Ofizialak (lerro bakoitza emaitza bat da)</label>
-                        <textarea id="subjectRAs" rows="5" class="editable-list-textarea w-full border p-2 rounded focus:outline-none focus:border-indigo-500"
-                            onchange="window.updateSubjectRAs(this.value)"></textarea>
+                        <textarea id="subjectRAs" rows="5" class="editable-list-textarea w-full border p-2 rounded focus:outline-none focus:border-indigo-500"></textarea>
                         <p class="text-xs text-gray-500 mt-1">Lerro berri bat sartu behar duzu emaitza bakoitzeko.</p>
                     </div>
                 </div>
-
 
                 <!-- Unitateak Gehitu Formularioa -->
                 <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
@@ -196,7 +177,7 @@
                             <label class="block text-sm text-gray-600 mb-1">Edukiak / Azalpena</label>
                             <textarea id="unitContent" rows="3" placeholder="Unitate honetan landuko diren edukiak..." class="w-full border p-2 rounded focus:outline-none focus:border-indigo-500"></textarea>
                         </div>
-                        <button onclick="window.addUnit()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition w-full md:w-auto">
+                        <button id="addUnitBtn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition w-full md:w-auto">
                             Gehitu Unitatea
                         </button>
                     </div>
@@ -226,345 +207,199 @@
         Mezua hemen
     </div>
 
-	<!-- Supabase SDK eta JavaScript Logika -->
-	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-	<script>
-	// 🔥 ALDATU HAU ZURE SUPABASE DATUEKIN 🔥
-	const SUPABASE_URL = "https://rthjrzmkozvungmiiikt.supabase.co";
-	const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0aGpyem1rb3p2dW5nbWlpaWt0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMTEwMTQsImV4cCI6MjA3OTg4NzAxNH0.cWWo4Pi6dURT3kdg_1E4Ujn1pG5bZhZTaFy0tcWZn6g";
+    <!-- Supabase SDK eta JavaScript Logika -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Supabase konfigurazioa
+        const SUPABASE_URL = "https://rthjrzmkozvungmiiikt.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0aGpyem1rb3p2dW5nbWlpaWt0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMTEwMTQsImV4cCI6MjA3OTg4NzAxNH0.cWWo4Pi6dURT3kdg_1E4Ujn1pG5bZhZTaFy0tcWZn6g";
 
-	// Supabase hasieratu
-	const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Supabase hasieratu
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Global variables to store state
-		window.curriculumData = null; 
-		window.selectedDegree = null;
-		window.selectedYear = null;
-		window.selectedSubjectIndex = null;
-		window.userId = "anonimoa";
-		window.isAuthReady = true;
+        window.curriculumData = null; 
+        window.selectedDegree = null;
+        window.selectedYear = null;
+        window.selectedSubjectIndex = null;
+        window.userId = "anonimoa";
+        window.isAuthReady = true;
 
-		// Datuak kargatu Supabase-tik
-		async function loadCurriculumData() {
-			try {
-				// 1. Saiatu Supabase-tik datuak lortzen
-				const { data } = await supabase
-					.from('curriculum_data')
-					.select('*')
-					.limit(1);
-				
-				// 2. Datuak badaude, erabili
-				if (data && data.length > 0) {
-					window.curriculumData = data[0].curriculum;
-				} 
-				// 3. Bestela, hutsik hasieratu
-				else {
-					window.curriculumData = {};
-				}
-				
-			} catch (error) {
-				// 4. Errore bat badago, hutsik hasieratu
-				console.log('Supabase errorea, hutsik hasieratzen:', error);
-				window.curriculumData = {};
-			}
-			
-			// 5. BETI jarraitu aurrera
-			document.getElementById('loadingOverlay').classList.add('hidden');
-			updateAuthUI(true);
-			window.initializeUI();
-		}
-
-		
-		// Datuak gorde Supabase-n (HOBETU HAU)
-		async function saveCurriculumData() {
-			try {
-				console.log('Datuak gordetzen Supabase-n...');
-				
-				// Egiaztatu datuak daudela
-				if (!window.curriculumData || Object.keys(window.curriculumData).length === 0) {
-					window.showToast('❌ Ez dago daturik gordetzeko', 'error');
-					return;
-				}
-				
-				const { error } = await supabase
-					.from('curriculum_data')
-					.upsert({
-						curriculum: window.curriculumData,
-						last_updated: new Date().toISOString(),
-						updated_by: window.userId || 'user'
-					}, {
-						onConflict: 'id'
-					});
-				
-				if (error) throw error;
-				
-				console.log('Datuak gorde dira Supabase-n!');
-				window.showToast('✅ Datuak gorde dira Supabase-n!', 'success');
-				
-			} catch (error) {
-				console.error('ERROREA datuak gordetzean:', error);
-				window.showToast('❌ Errorea gordetzean: ' + error.message, 'error');
-			}
-		}
-		
-		// Denbora errealeko eguneraketak
-		function setupRealtimeUpdates() {
-			supabase
-				.channel('curriculum-changes')
-				.on('postgres_changes', 
-					{ 
-						event: '*', 
-						schema: 'public', 
-						table: 'curriculum_data' 
-					},
-					(payload) => {
-						console.log('DENBORA ERREALEKO ALDAKETA:', payload);
-						if (payload.new && payload.new.curriculum) {
-							window.curriculumData = payload.new.curriculum;
-							window.initializeUI();
-							window.showToast('🔄 Datuak eguneratu dira (lankideak)', 'normal');
-						}
-					}
-				)
-				.subscribe();
-		}
-
-		// GEHITU HAU ZURE SUPABASE KODEAren ONDOREN:
-
-		// Supabase-tik datuak berkargatu (behartu)
-		async function forceReloadFromSupabase() {
-			try {
-				document.getElementById('loadingOverlay').classList.remove('hidden');
-				
-				const { data, error } = await supabase
-					.from('curriculum_data')
-					.select('*')
-					.limit(1);
-				
-				if (error) throw error;
-				
-				if (data && data.length > 0) {
-					window.curriculumData = data[0].curriculum;
-					window.initializeUI();
-					window.showToast('✅ Datuak berkargatu dira Supabase-tik', 'success');
-				} else {
-					window.showToast('ℹ️ Ez dago daturik Supabase-n', 'normal');
-				}
-				
-			} catch (error) {
-				console.error('Errorea Supabase-tik berkargatzean:', error);
-				window.showToast('❌ Errorea datuak berkargatzean', 'error');
-			} finally {
-				document.getElementById('loadingOverlay').classList.add('hidden');
-			}
-		}
-
-		// Datuak ikusi Supabase-n (debug)
-		async function viewSupabaseData() {
-			try {
-				const { data, error } = await supabase
-					.from('curriculum_data')
-					.select('*');
-				
-				if (error) throw error;
-				
-				console.log('Supabase Datuak:', data);
-				alert(`Supabase-n dauden erregistroak: ${data.length}\nIkusi kontsola datu guztiekin.`);
-				
-			} catch (error) {
-				console.error('Errorea datuak ikustean:', error);
-				window.showToast('❌ Errorea datuak ikustean', 'error');
-			}
-		}
-
-		// Supabase egoera egiaztatu
-		async function checkSupabaseStatus() {
-			try {
-				const { data, error } = await supabase
-					.from('curriculum_data')
-					.select('count')
-					.limit(1);
-				
-				if (!error) {
-					console.log('✅ Supabase konektatuta');
-					return true;
-				} else {
-					console.warn('⚠️ Supabase konexio arazoak');
-					return false;
-				}
-			} catch (error) {
-				console.error('❌ Supabase konexio errorea:', error);
-				return false;
-			}
-		}
-
-		// App hasieratzean egiaztatu
-		document.addEventListener('DOMContentLoaded', function() {
-			checkSupabaseStatus();
-		});
-
-
-		// Auth UI eguneratu (Firebase-rik gabe)
-		function updateAuthUI(authenticated) {
-			const userIdDisplay = document.getElementById('userIdDisplay');
-			const googleSignInBtn = document.getElementById('googleSignInBtn');
-			const signOutBtn = document.getElementById('signOutBtn');
-			const noDataMessage = document.getElementById('noDataMessage');
-			const saveBtn = document.getElementById('saveBtn');
-			const downloadBackupBtn = document.getElementById('downloadBackupBtn');
-			const localJsonLoadBtn = document.getElementById('localJsonLoadBtn');
-
-			if (authenticated) {
-				userIdDisplay.textContent = `Supabase`;
-				googleSignInBtn.classList.add('hidden');
-				signOutBtn.classList.add('hidden');
-				saveBtn.disabled = false;
-				downloadBackupBtn.disabled = false;
-				noDataMessage.classList.add('hidden');
-				document.getElementById('navigationPanel').classList.remove('hidden');
-			}
-		}
-		
-		// JSON fitxategia kargatzeko funtzioa
-		function uploadJsonFile() {
-			document.getElementById('jsonFileInput').click();
-		}
-
-		document.getElementById('jsonFileInput').addEventListener('change', function(e) {
-			const file = e.target.files[0];
-			if (file) {
-				const reader = new FileReader();
-				reader.onload = function(e) {
-					try {
-						const jsonData = JSON.parse(e.target.result);
-						window.curriculumData = jsonData;
-						window.normalizeData(window.curriculumData);
-						window.initializeUI();
-						window.showToast('✅ JSON datuak kargatu dira!', 'success');
-						
-						// Automatikoki gorde Supabase-n
-						setTimeout(() => {
-							window.saveCurriculumData();
-						}, 1000);
-						
-					} catch (error) {
-						window.showToast('❌ JSON fitxategi okerra', 'error');
-					}
-				};
-				reader.readAsText(file);
-			}
-		});
-		</script>
-		
-		// Datuak gordetzeko botoia
-		window.saveAllDataToFirestore = saveCurriculumData;
-
-		// Datuak kargatu orria kargatzean
-		window.addEventListener('DOMContentLoaded', function() {
-			document.getElementById('loadingOverlay').classList.add('hidden');
-			loadCurriculumData();
-		});
-
-		// Datuak normalizatzeko funtzioa (zure kodea mantendu)
-		window.normalizeData = function(data) {
-			for (const degree in data) {
-				for (const year in data[degree]) {
-					if (Array.isArray(data[degree][year])) {
-						data[degree][year].forEach((subject, subjectIndex) => {
-							if (!Array.isArray(subject.unitateak)) {
-								if (typeof subject.unitateak === 'string') {
-									try {
-										const parsedUnits = JSON.parse(subject.unitateak);
-										subject.unitateak = Array.isArray(parsedUnits) ? parsedUnits : [];
-									} catch (e) {
-										subject.unitateak = [];
-									}
-								} else {
-									subject.unitateak = [];
-								}
-							}
-							
-							subject.unitateak.forEach((unit, unitIndex) => {
-								if (typeof unit.id !== 'string' || isNaN(parseInt(unit.id)) || unit.id.startsWith('fallback-')) {
-									unit.id = `fallback-${subjectIndex}-${unitIndex}-${Date.now() + Math.floor(Math.random() * 1000)}`;
-								}
-							});
-
-							if (!Array.isArray(subject.currentOfficialRAs)) {
-								subject.currentOfficialRAs = [];
-							}
-						});
-					}
-				}
-			}
-		};
-		
-        // --- JSON fitxategia tokiko datuetatik kargatzeko funtzioa ---
-        window.loadLocalJsonData = function(isInitialLoad = false) {
-			if (!window.defaultJsonContent) {
-				window.showToast("Errorea: Ez da aurkitu kargatzeko tokiko JSON fitxategia.", "error");
-				return;
-			}
-
-			try {
-				const parsedData = JSON.parse(window.defaultJsonContent);
-				window.curriculumData = parsedData;
-				window.normalizeData(window.curriculumData);
-				
-				// UI eguneratu
-				window.selectedDegree = null;
-				window.selectedYear = null;
-				window.selectedSubjectIndex = null;
-				window.initializeUI(); 
-				window.resetEditor();
-
-				if (isInitialLoad) {
-					window.showToast("Supabase hutsik dago. Tokiko JSON kargatu da.", "normal");
-				} else {
-					window.showToast("Tokiko JSON datuak kargatu dira.", "success");
-				}
-				
-				// ✅ SUPABASE-N GORDE
-				if (isInitialLoad) {
-				   window.saveCurriculumData(); // 🔥 ALDAKETA HAU
-				}
-
-			} catch (e) {
-				console.error("Tokiko JSON parseatze errorea:", e);
-				window.showToast("Errorea tokiko JSON datuak kargatzean.", "error");
-			}
-		}
-        
-        // --- JSON Deskarga Funtzioa (Segurtasun Kopia) ---
-        window.downloadJsonData = function() {
-            if (!window.curriculumData) {
-                window.showToast("Ez dago daturik deskargatzeko!", "error");
-                return;
-            }
+        // Datuak kargatu Supabase-tik
+        async function loadCurriculumData() {
             try {
-                const dataStr = JSON.stringify(window.curriculumData, null, 2);
-                const blob = new Blob([dataStr], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                // Fitxategi izena data-rekin sortu
-                const date = new Date().toISOString().slice(0, 10);
-                a.download = `curriculum_backup_${date}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                window.showToast("Datuak JSON fitxategi gisa deskargatu dira (segurtasun kopia).", "success");
-            } catch (e) {
-                console.error("JSON deskarga errorea:", e);
-                window.showToast("Errorea datuak deskargatzean.", "error");
+                // 1. Saiatu Supabase-tik datuak lortzen
+                const { data } = await supabase
+                    .from('curriculum_data')
+                    .select('*')
+                    .limit(1);
+                
+                // 2. Datuak badaude, erabili
+                if (data && data.length > 0) {
+                    window.curriculumData = data[0].curriculum;
+                } 
+                // 3. Bestela, hutsik hasieratu
+                else {
+                    window.curriculumData = {};
+                }
+                
+            } catch (error) {
+                // 4. Errore bat badago, hutsik hasieratu
+                console.log('Supabase errorea, hutsik hasieratzen:', error);
+                window.curriculumData = {};
+            }
+            
+            // 5. BETI jarraitu aurrera
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            updateAuthUI(true);
+            window.initializeUI();
+        }
+
+        // Datuak gorde Supabase-n
+        async function saveCurriculumData() {
+            try {
+                console.log('Datuak gordetzen Supabase-n...');
+                
+                // Egiaztatu datuak daudela
+                if (!window.curriculumData || Object.keys(window.curriculumData).length === 0) {
+                    window.showToast('❌ Ez dago daturik gordetzeko', 'error');
+                    return;
+                }
+                
+                const { error } = await supabase
+                    .from('curriculum_data')
+                    .upsert({
+                        curriculum: window.curriculumData,
+                        last_updated: new Date().toISOString(),
+                        updated_by: window.userId || 'user'
+                    }, {
+                        onConflict: 'id'
+                    });
+                
+                if (error) throw error;
+                
+                console.log('Datuak gorde dira Supabase-n!');
+                window.showToast('✅ Datuak gorde dira Supabase-n!', 'success');
+                
+            } catch (error) {
+                console.error('ERROREA datuak gordetzean:', error);
+                window.showToast('❌ Errorea gordetzean: ' + error.message, 'error');
+            }
+        }
+        
+        // Denbora errealeko eguneraketak
+        function setupRealtimeUpdates() {
+            supabase
+                .channel('curriculum-changes')
+                .on('postgres_changes', 
+                    { 
+                        event: '*', 
+                        schema: 'public', 
+                        table: 'curriculum_data' 
+                    },
+                    (payload) => {
+                        console.log('DENBORA ERREALEKO ALDAKETA:', payload);
+                        if (payload.new && payload.new.curriculum) {
+                            window.curriculumData = payload.new.curriculum;
+                            window.initializeUI();
+                            window.showToast('🔄 Datuak eguneratu dira (lankideak)', 'normal');
+                        }
+                    }
+                )
+                .subscribe();
+        }
+
+        // Supabase-tik datuak berkargatu (behartu)
+        async function forceReloadFromSupabase() {
+            try {
+                document.getElementById('loadingOverlay').classList.remove('hidden');
+                
+                const { data, error } = await supabase
+                    .from('curriculum_data')
+                    .select('*')
+                    .limit(1);
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    window.curriculumData = data[0].curriculum;
+                    window.initializeUI();
+                    window.showToast('✅ Datuak berkargatu dira Supabase-tik', 'success');
+                } else {
+                    window.showToast('ℹ️ Ez dago daturik Supabase-n', 'normal');
+                }
+                
+            } catch (error) {
+                console.error('Errorea Supabase-tik berkargatzean:', error);
+                window.showToast('❌ Errorea datuak berkargatzean', 'error');
+            } finally {
+                document.getElementById('loadingOverlay').classList.add('hidden');
             }
         }
 
+        // Datuak ikusi Supabase-n (debug)
+        async function viewSupabaseData() {
+            try {
+                const { data, error } = await supabase
+                    .from('curriculum_data')
+                    .select('*');
+                
+                if (error) throw error;
+                
+                console.log('Supabase Datuak:', data);
+                alert(`Supabase-n dauden erregistroak: ${data.length}\nIkusi kontsola datu guztiekin.`);
+                
+            } catch (error) {
+                console.error('Errorea datuak ikustean:', error);
+                window.showToast('❌ Errorea datuak ikustean', 'error');
+            }
+        }
 
-        // --- Datuen Normalizazioa (JSON Egitura Bermatzea) ---
+        // Supabase egoera egiaztatu
+        async function checkSupabaseStatus() {
+            try {
+                const { data, error } = await supabase
+                    .from('curriculum_data')
+                    .select('count')
+                    .limit(1);
+                
+                if (!error) {
+                    console.log('✅ Supabase konektatuta');
+                    return true;
+                } else {
+                    console.warn('⚠️ Supabase konexio arazoak');
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Supabase konexio errorea:', error);
+                return false;
+            }
+        }
+
+        // Auth UI eguneratu (Firebase-rik gabe)
+        function updateAuthUI(authenticated) {
+            const userIdDisplay = document.getElementById('userIdDisplay');
+            const noDataMessage = document.getElementById('noDataMessage');
+            const saveBtn = document.getElementById('saveBtn');
+            const downloadBackupBtn = document.getElementById('downloadBackupBtn');
+            const localJsonLoadBtn = document.getElementById('localJsonLoadBtn');
+
+            if (authenticated) {
+                userIdDisplay.textContent = `Supabase`;
+                saveBtn.disabled = false;
+                downloadBackupBtn.disabled = false;
+                noDataMessage.classList.add('hidden');
+                document.getElementById('navigationPanel').classList.remove('hidden');
+            }
+        }
+        
+        // JSON fitxategia kargatzeko funtzioa
+        function uploadJsonFile() {
+            document.getElementById('jsonFileInput').click();
+        }
+
+        // Datuak normalizatzeko funtzioa
         window.normalizeData = function(data) {
-            // ... (Funtzio hau ez da aldatu aurreko bertsiotik, eragiketa konplexua da)
             for (const degree in data) {
                 for (const year in data[degree]) {
                     if (Array.isArray(data[degree][year])) {
@@ -596,9 +431,70 @@
                 }
             }
         };
+        
+        // --- JSON fitxategia tokiko datuetatik kargatzeko funtzioa ---
+        window.loadLocalJsonData = function(isInitialLoad = false) {
+            if (!window.defaultJsonContent) {
+                window.showToast("Errorea: Ez da aurkitu kargatzeko tokiko JSON fitxategia.", "error");
+                return;
+            }
 
+            try {
+                const parsedData = JSON.parse(window.defaultJsonContent);
+                window.curriculumData = parsedData;
+                window.normalizeData(window.curriculumData);
+                
+                // UI eguneratu
+                window.selectedDegree = null;
+                window.selectedYear = null;
+                window.selectedSubjectIndex = null;
+                window.initializeUI(); 
+                window.resetEditor();
 
-        // --- UI Rendering eta Ekintza Funtzioak (Laburtuta) ---
+                if (isInitialLoad) {
+                    window.showToast("Supabase hutsik dago. Tokiko JSON kargatu da.", "normal");
+                } else {
+                    window.showToast("Tokiko JSON datuak kargatu dira.", "success");
+                }
+                
+                // ✅ SUPABASE-N GORDE
+                if (isInitialLoad) {
+                   window.saveCurriculumData();
+                }
+
+            } catch (e) {
+                console.error("Tokiko JSON parseatze errorea:", e);
+                window.showToast("Errorea tokiko JSON datuak kargatzean.", "error");
+            }
+        }
+        
+        // --- JSON Deskarga Funtzioa (Segurtasun Kopia) ---
+        window.downloadJsonData = function() {
+            if (!window.curriculumData) {
+                window.showToast("Ez dago daturik deskargatzeko!", "error");
+                return;
+            }
+            try {
+                const dataStr = JSON.stringify(window.curriculumData, null, 2);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // Fitxategi izena data-rekin sortu
+                const date = new Date().toISOString().slice(0, 10);
+                a.download = `curriculum_backup_${date}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                window.showToast("Datuak JSON fitxategi gisa deskargatu dira (segurtasun kopia).", "success");
+            } catch (e) {
+                console.error("JSON deskarga errorea:", e);
+                window.showToast("Errorea datuak deskargatzean.", "error");
+            }
+        }
+
+        // --- UI Rendering eta Ekintza Funtzioak ---
         
         window.initializeUI = function() {
             document.getElementById('loadingOverlay').classList.add('hidden');
@@ -817,8 +713,70 @@
             });
         }
         
-	console.log('Supabase kodea kargatuta!');
+        // Datuak gordetzeko botoia
+        window.saveAllDataToFirestore = saveCurriculumData;
+        
+        // Supabase funtzioak eskuragarri
+        window.supabaseIkusiDatuak = viewSupabaseData;
+        window.supabaseGehituDatuak = saveCurriculumData;
+
+        // Event listenerrak gehitu
+        document.addEventListener('DOMContentLoaded', function() {
+            // Supabase egoera egiaztatu
+            checkSupabaseStatus();
+            
+            // Datuak kargatu orria kargatzean
+            loadCurriculumData();
+            
+            // Event listenerrak gehitu
+            document.getElementById('degreeSelect').addEventListener('change', window.onDegreeChange);
+            document.getElementById('subjectNameEdit').addEventListener('change', function() {
+                window.updateSubjectName(this.value);
+            });
+            document.getElementById('subjectArea').addEventListener('change', function() {
+                window.updateSubjectData('arloa', this.value);
+            });
+            document.getElementById('subjectRAs').addEventListener('change', function() {
+                window.updateSubjectRAs(this.value);
+            });
+            document.getElementById('addUnitBtn').addEventListener('click', window.addUnit);
+            document.getElementById('uploadJsonBtn').addEventListener('click', uploadJsonFile);
+            document.getElementById('supabaseViewBtn').addEventListener('click', viewSupabaseData);
+            document.getElementById('supabaseSaveBtn').addEventListener('click', saveCurriculumData);
+            document.getElementById('saveBtn').addEventListener('click', saveCurriculumData);
+            document.getElementById('downloadBackupBtn').addEventListener('click', window.downloadJsonData);
+            
+            // JSON fitxategia kargatzeko event listener
+            document.getElementById('jsonFileInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const jsonData = JSON.parse(e.target.result);
+                            window.curriculumData = jsonData;
+                            window.normalizeData(window.curriculumData);
+                            window.initializeUI();
+                            window.showToast('✅ JSON datuak kargatu dira!', 'success');
+                            
+                            // Automatikoki gorde Supabase-n
+                            setTimeout(() => {
+                                window.saveCurriculumData();
+                            }, 1000);
+                            
+                        } catch (error) {
+                            window.showToast('❌ JSON fitxategi okerra', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            // Denbora errealeko eguneraketak hasi
+            setupRealtimeUpdates();
+        });
+
+        console.log('Supabase kodea kargatuta!');
     </script>
 </body>
 </html>
-
