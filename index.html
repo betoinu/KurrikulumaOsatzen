@@ -328,26 +328,27 @@
         
         // AUTH FUNtzioak
         // HTML barruan dagoen kodea eguneratu
+        // 6. AUTH FUNtzioak
         window.signInWithGoogle = async function() {
             try {
+                console.log('🔐 Google saioa hasten...');
+                
                 const { data, error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
-                    options: {
-                        redirectTo: window.location.origin,
-                        queryParams: {
-                            access_type: 'offline',
-                            prompt: 'consent'
-                        }
+                    options: { 
+                        redirectTo: 'https://betoinu.github.io/Curriculum-Data-Store/'  // 🔥 ALDATU HAU
                     }
                 });
                 
                 if (error) {
-                    console.error('Errorea saioa hastean:', error);
-                    window.showToast('❌ Errorea saioa hastean: ' + error.message, 'error');
+                    console.error('❌ Google Auth errorea:', error);
+                    window.showToast('❌ Errorea Google saioa hastean: ' + error.message, 'error');
+                } else {
+                    console.log('✅ Google Auth ondo:', data);
                 }
             } catch (error) {
-                console.error('Salbuespena saioa hastean:', error);
-                window.showToast('❌ Errorea saioa hastean', 'error');
+                console.error('💥 Salbuespena Google Auth:', error);
+                window.showToast('❌ Errorea Google saioa hastean', 'error');
             }
         }
         
@@ -1119,6 +1120,7 @@
     </script>
 </body>
 </html>
+
 
 
 
