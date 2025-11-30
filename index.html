@@ -277,6 +277,30 @@
             return false;
         });
 
+        // 🔥 HOBETSUA - Datuak mantendu baina ikuspena kontrolatu
+        function hideCurriculumData() {
+            // UI ezkutatu baina datuak mantendu
+            document.getElementById('navigationPanel').classList.add('hidden');
+            document.getElementById('editorPanel').classList.add('hidden');
+            document.getElementById('welcomeEditor').classList.remove('hidden');
+            document.getElementById('noDataMessage').classList.remove('hidden');
+            
+            // 🔥 DATUAK EZ GARBIATU - cache-an mantendu
+            // window.curriculumData = null;  // ❌ EZ EGIN HAU
+            // window.selectedDegree = null;   // ❌ EZ EGIN HAU
+            
+            // Soilik reset selektoreak
+            window.selectedDegree = null;
+            window.selectedYear = null; 
+            window.selectedSubjectIndex = null;
+            
+            // UI elementuak reset
+            document.getElementById('degreeSelect').innerHTML = '<option value="">-- Aukeratu Gradua --</option>';
+            document.getElementById('yearButtons').innerHTML = '';
+            document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu...</li>';
+        }
+
+        
         // FUNtzioak DEFINITU
         function checkSupabaseStatus() {
             console.log('✅ Supabase konektatuta');
@@ -336,6 +360,7 @@
             if (user && isValidEmail(user.email)) {
                 const userIsAdmin = isAdmin(user);
                 
+                // 🔥 UI elementuak eguneratu (saioa hasita)
                 document.getElementById('signInBtn').classList.add('hidden');
                 document.getElementById('signOutBtn').classList.remove('hidden');
                 document.getElementById('userInfo').classList.remove('hidden');
@@ -354,11 +379,25 @@
                     document.getElementById('uploadJsonBtn').classList.add('hidden');
                 }
                 
-                // 🔥 DATUAK KARGATU soilik saioa hasita badago
-                await loadCurriculumData();
+                // 🔥 DATUAK KARGATU soilik behar badira
+                if (!window.curriculumData) {
+                    await loadCurriculumData();
+                } else {
+                    // 🔥 DATUAK BADAUDE - UI baino erakutsi
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                    document.getElementById('noDataMessage').classList.add('hidden');
+                    document.getElementById('navigationPanel').classList.remove('hidden');
+                    
+                    // UI-aren egoera berreskuratu
+                    if (window.selectedDegree && window.selectedYear && window.selectedSubjectIndex !== null) {
+                        window.loadSubjectEditor(window.selectedSubjectIndex);
+                    } else {
+                        window.initializeUI();
+                    }
+                }
                 
             } else {
-                // 🔥 SAIORIK EZ - EZIKUTU DATU GUZTIAK
+                // 🔥 SAIORIK EZ - UI EZKUTATU baina DATUAK MANTENDU
                 document.getElementById('signInBtn').classList.remove('hidden');
                 document.getElementById('signOutBtn').classList.add('hidden');
                 document.getElementById('userInfo').classList.add('hidden');
@@ -367,15 +406,23 @@
                 document.getElementById('navigationPanel').classList.add('hidden');
                 document.getElementById('loadingOverlay').classList.add('hidden');
                 
-                // 🔥 GARBIAGU DATUAK
-                window.curriculumData = null;
+                // 🔥 EDITOREA EZKUTATU
+                document.getElementById('welcomeEditor').classList.remove('hidden');
+                document.getElementById('editorPanel').classList.add('hidden');
+                
+                // 🔥 ❌ EZ GARBIATU DATUAK - CACHE-AN MANTENDU
+                // window.curriculumData = null;  // ❌ EZ EGIN
+                // window.selectedDegree = null;   // ❌ EZ EGIN
+                
+                // 🔥 Soilik selektoreak reset (segurtasunerako)
                 window.selectedDegree = null;
                 window.selectedYear = null;
                 window.selectedSubjectIndex = null;
                 
-                // 🔥 EDITOREA GARBIAGU
-                document.getElementById('welcomeEditor').classList.remove('hidden');
-                document.getElementById('editorPanel').classList.add('hidden');
+                // 🔥 UI elementuak reset (segurtasunerako)
+                document.getElementById('degreeSelect').innerHTML = '<option value="">-- Aukeratu Gradua --</option>';
+                document.getElementById('yearButtons').innerHTML = '';
+                document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu irakasgaiak ikusteko...</li>';
             }
         }
         
@@ -444,6 +491,12 @@
    
         // Datuak gorde (erabiltzaile infoarekin)
         async function saveCurriculumData() {
+                // 🔥 EGIAZTATU SAIORIK DAGOEN
+            const user = await checkAuth();
+            if (!user) {
+                window.showToast('❌ Saioa hasi behar duzu gordetzeko', 'error');
+                return;
+            }      
             const user = await checkAuth();
             if (!user) return;
             
@@ -811,6 +864,11 @@
         }
 
         window.addUnit = function() {
+            const user = await checkAuth();
+                if (!user) {
+                    window.showToast('❌ Saioa hasi behar duzu unitateak gehitzeko', 'error');
+                    return;
+                }
             const nameInput = document.getElementById('unitName');
             const contentInput = document.getElementById('unitContent');
             const subject = window.getSelectedSubject();
@@ -900,9 +958,23 @@
             // Datuak kargatu
             updateUI();
             // Auth aldaketak entzun
-            supabase.auth.onAuthStateChange((event, session) => {
+            supabase.auth.onAuthStateChange(async (event, session) => {
                 console.log('Auth aldaketa:', event);
-                updateUI();
+                
+                if (event === 'SIGNED_OUT') {
+                    // 🔥 Saioa irtetzean - UI ezkutatu baina datuak mantendu
+                    hideCurriculumData();
+                } else if (event === 'SIGNED_IN') {
+                    // 🔥 Saioa hastean - datuak jada baditugu, UI baino erakutsi
+                    if (window.curriculumData) {
+                        document.getElementById('loadingOverlay').classList.add('hidden');
+                        document.getElementById('noDataMessage').classList.add('hidden');
+                        document.getElementById('navigationPanel').classList.remove('hidden');
+                        window.initializeUI();
+                    }
+                }
+                
+                await updateUI();
             });
             
             // Botoiak administratzaileentzat
@@ -957,6 +1029,7 @@
     </script>
 </body>
 </html>
+
 
 
 
