@@ -247,6 +247,36 @@
         const ADMIN_EMAILS = ['josuayerbe@idarte.eus'];
         const ALLOWED_DOMAINS = ['idarte.eus'];
 
+    // 🔥🔥🔥 GEHITU HEMEN - kodea 🔥🔥🔥
+        async function checkAuthProviders() {
+            try {
+                const { data, error } = await supabase.auth.getUser();
+                console.log('Auth egoera:', data);
+                
+                // Egiaztatu provider-ak
+                const { data: settings } = await supabase.auth.getSettings();
+                console.log('Auth settings:', settings);
+                
+            } catch (error) {
+                console.error('Errorea auth settings egiaztatzean:', error);
+            }
+        }
+    
+        // 🔥🔥🔥 GEHITU HEMEN - service worker kodea 🔥🔥🔥
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+    
+        // 🔥🔥🔥 GEHITU HEMEN - fetch handler 🔥🔥🔥
+        window.addEventListener('fetch', event => {
+            event.preventDefault();
+            return false;
+        });
+
         // FUNtzioak DEFINITU
         function checkSupabaseStatus() {
             console.log('✅ Supabase konektatuta');
@@ -269,12 +299,28 @@
         }
         
         // AUTH FUNtzioak
+        // HTML barruan dagoen kodea eguneratu
         window.signInWithGoogle = async function() {
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: { redirectTo: window.location.origin }
-            });
-            if (error) console.error('Errorea saioa hastean:', error);
+            try {
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin,
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    console.error('Errorea saioa hastean:', error);
+                    window.showToast('❌ Errorea saioa hastean: ' + error.message, 'error');
+                }
+            } catch (error) {
+                console.error('Salbuespena saioa hastean:', error);
+                window.showToast('❌ Errorea saioa hastean', 'error');
+            }
         }
         
         window.signOut = async function() {
@@ -871,6 +917,7 @@
     </script>
 </body>
 </html>
+
 
 
 
