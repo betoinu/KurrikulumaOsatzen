@@ -589,6 +589,28 @@
                 .subscribe();
         }
 
+        // Gehitu funtzio hau zure kodean
+        function handleAuthRedirect() {
+            // Egiaztatu token-a URL-an badago
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const accessToken = hashParams.get('access_token');
+            
+            if (accessToken) {
+                console.log('✅ Token-a aurkitu da URL-an - saioa hasita');
+                
+                // Token-a automatikoki prozesatuko da Supabase-k
+                // Eguneratu UI-a
+                setTimeout(() => {
+                    window.updateUI();
+                }, 1000);
+            }
+        }
+        
+        // Dei egin orria kargatzean
+        document.addEventListener('DOMContentLoaded', function() {
+            handleAuthRedirect();
+        });
+        
         // Supabase-tik datuak berkargatu (behartu)
         async function forceReloadFromSupabase() {
             try {
@@ -647,7 +669,7 @@
                 window.showToast('❌ Errorea datuak ikustean', 'error');
             }
         }
-
+        
         // Datuak normalizatzeko funtzioa
         window.normalizeData = function(data) {
             for (const degree in data) {
@@ -1097,6 +1119,7 @@
     </script>
 </body>
 </html>
+
 
 
 
