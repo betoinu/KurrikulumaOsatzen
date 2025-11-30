@@ -490,15 +490,13 @@
         } 
    
         // Datuak gorde (erabiltzaile infoarekin)
-        async function saveCurriculumData() {
-                // 🔥 EGIAZTATU SAIORIK DAGOEN
+       async function saveCurriculumData() {
+            // 🔥 EGIAZTATU SAIORIK DAGOEN (BEHIN BAKARRIK)
             const user = await checkAuth();
             if (!user) {
                 window.showToast('❌ Saioa hasi behar duzu gordetzeko', 'error');
                 return;
-            }      
-            const user = await checkAuth();
-            if (!user) return;
+            }
             
             try {
                 const { error } = await supabase
@@ -1029,6 +1027,7 @@
     </script>
 </body>
 </html>
+
 
 
 
