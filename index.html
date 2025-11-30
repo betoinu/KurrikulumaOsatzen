@@ -224,11 +224,13 @@
         Mezua hemen
     </div>
 
+    <!-- JSON fitxategia kargatzeko input ezkutua -->
+    <input type="file" id="jsonFileInput" accept=".json" class="hidden">
+
     <!-- Supabase SDK eta JavaScript Logika -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-
-        // Supabase konfigurazioa - .env fitxategitik kargatuko da
+        // Supabase konfigurazioa - config.js fitxategitik kargatuko da
         const SUPABASE_URL = window.SUPABASE_URL;
         const SUPABASE_KEY = window.SUPABASE_KEY;
     
@@ -241,11 +243,11 @@
         window.selectedYear = null;
         window.selectedSubjectIndex = null;
 
-        // 4. ADMIN EMAILAK
+        // ADMIN EMAILAK
         const ADMIN_EMAILS = ['josuayerbe@idarte.eus'];
         const ALLOWED_DOMAINS = ['idarte.eus'];
 
-        // 5. FUNtzioak DEFINITU
+        // FUNtzioak DEFINITU
         function checkSupabaseStatus() {
             console.log('✅ Supabase konektatuta');
             return true;
@@ -266,7 +268,7 @@
             return user;
         }
         
-        // 6. AUTH FUNtzioak
+        // AUTH FUNtzioak
         window.signInWithGoogle = async function() {
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -281,7 +283,7 @@
             location.reload();
         }
         
-        // 7. UI EGUNERAKETA
+        // UI EGUNERAKETA
         async function updateUI() {
             const user = await checkAuth();
             
@@ -298,10 +300,12 @@
                     document.getElementById('userRole').textContent = 'Administratzailea';
                     document.getElementById('userRole').className = 'text-xs bg-red-500 px-2 py-1 rounded ml-2';
                     document.getElementById('downloadBackupBtn').classList.remove('hidden');
+                    document.getElementById('uploadJsonBtn').classList.remove('hidden');
                 } else {
                     document.getElementById('userRole').textContent = 'Irakaslea';
                     document.getElementById('userRole').className = 'text-xs bg-green-500 px-2 py-1 rounded ml-2';
                     document.getElementById('downloadBackupBtn').classList.add('hidden');
+                    document.getElementById('uploadJsonBtn').classList.add('hidden');
                 }
                 
                 await loadCurriculumData();
@@ -315,7 +319,7 @@
             }
         }
         
-        // 8. DATUAK KARGATU
+        // DATUAK KARGATU
         async function loadCurriculumData() {
             try {
                 console.log('Datuak kargatzen...');
@@ -340,7 +344,9 @@
                     document.getElementById('navigationPanel').classList.remove('hidden');
                     window.initializeUI();
                 } else {
-                    throw new Error('Ez dago daturik');
+                    // Ez dago daturik Supabase-n, JSON lokala kargatu
+                    console.log('Ez dago daturik Supabase-n, JSON lokala kargatzen...');
+                    await loadLocalJsonData(true);
                 }
                 
             } catch (error) {
@@ -350,22 +356,6 @@
             }
         }    
    
-        // Emaila egiaztatu
-        async function validateEmail() {
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            if (!user) return false;
-            
-            if (!ALLOWED_EMAILS.includes(user.email)) {
-                await supabase.auth.signOut();
-                window.showToast('❌ Zure emailak ez du sarrerarik', 'error');
-                return false;
-            }
-            
-            return true;
-        }
-        
-        // Datuak gorde Supabase-n
         // Datuak gorde (erabiltzaile infoarekin)
         async function saveCurriculumData() {
             const user = await checkAuth();
@@ -377,8 +367,8 @@
                     .upsert({
                         curriculum: window.curriculumData,
                         last_updated: new Date().toISOString(),
-                        updated_by: user.email,  // 🆕 Nork egin duen
-                        user_role: isAdmin(user) ? 'admin' : 'teacher'  // 🆕 Rola gorde
+                        updated_by: user.email,  // Nork egin duen
+                        user_role: isAdmin(user) ? 'admin' : 'teacher'  // Rola gorde
                     });
                 
                 if (error) throw error;
@@ -472,49 +462,6 @@
             }
         }
 
-        // Supabase egoera egiaztatu
-        async function checkSupabaseStatus() {
-            try {
-                const { data, error } = await supabase
-                    .from('curriculum_data')
-                    .select('count')
-                    .limit(1);
-                
-                if (!error) {
-                    console.log('✅ Supabase konektatuta');
-                    return true;
-                } else {
-                    console.warn('⚠️ Supabase konexio arazoak');
-                    return false;
-                }
-            } catch (error) {
-                console.error('❌ Supabase konexio errorea:', error);
-                return false;
-            }
-        }
-
-        // Auth UI eguneratu (Firebase-rik gabe)
-        function updateAuthUI(authenticated) {
-            const userIdDisplay = document.getElementById('userIdDisplay');
-            const noDataMessage = document.getElementById('noDataMessage');
-            const saveBtn = document.getElementById('saveBtn');
-            const downloadBackupBtn = document.getElementById('downloadBackupBtn');
-            const localJsonLoadBtn = document.getElementById('localJsonLoadBtn');
-
-            if (authenticated) {
-                userIdDisplay.textContent = `Supabase`;
-                saveBtn.disabled = false;
-                downloadBackupBtn.disabled = false;
-                noDataMessage.classList.add('hidden');
-                document.getElementById('navigationPanel').classList.remove('hidden');
-            }
-        }
-        
-        // JSON fitxategia kargatzeko funtzioa
-        function uploadJsonFile() {
-            document.getElementById('jsonFileInput').click();
-        }
-
         // Datuak normalizatzeko funtzioa
         window.normalizeData = function(data) {
             for (const degree in data) {
@@ -550,18 +497,23 @@
         };
         
         // --- JSON fitxategia tokiko datuetatik kargatzeko funtzioa ---
-        window.loadLocalJsonData = function(isInitialLoad = false) {
-            if (!window.defaultJsonContent) {
-                window.showToast("Errorea: Ez da aurkitu kargatzeko tokiko JSON fitxategia.", "error");
-                return;
-            }
-
+        window.loadLocalJsonData = async function(isInitialLoad = false) {
             try {
-                const parsedData = JSON.parse(window.defaultJsonContent);
+                // JSON lokala kargatu fetch bidez
+                const response = await fetch('curriculum_eguneratua_2025-11-27.json');
+                if (!response.ok) {
+                    throw new Error('JSON fitxategia ezin izan da kargatu');
+                }
+                
+                const parsedData = await response.json();
                 window.curriculumData = parsedData;
                 window.normalizeData(window.curriculumData);
                 
                 // UI eguneratu
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                document.getElementById('noDataMessage').classList.add('hidden');
+                document.getElementById('navigationPanel').classList.remove('hidden');
+                
                 window.selectedDegree = null;
                 window.selectedYear = null;
                 window.selectedSubjectIndex = null;
@@ -570,18 +522,16 @@
 
                 if (isInitialLoad) {
                     window.showToast("Supabase hutsik dago. Tokiko JSON kargatu da.", "normal");
+                    // ✅ SUPABASE-N GORDE
+                    await window.saveCurriculumData();
                 } else {
                     window.showToast("Tokiko JSON datuak kargatu dira.", "success");
                 }
-                
-                // ✅ SUPABASE-N GORDE
-                if (isInitialLoad) {
-                   window.saveCurriculumData();
-                }
 
             } catch (e) {
-                console.error("Tokiko JSON parseatze errorea:", e);
+                console.error("Tokiko JSON kargatze errorea:", e);
                 window.showToast("Errorea tokiko JSON datuak kargatzean.", "error");
+                document.getElementById('loadingOverlay').classList.add('hidden');
             }
         }
         
@@ -868,15 +818,10 @@
                 console.log('Auth aldaketa:', event);
                 updateUI();
             });
-            // Datuak kargatu orria kargatzean
-            loadCurriculumData();
             
             // Botoiak administratzaileentzat
             document.getElementById('downloadBackupBtn').addEventListener('click', window.downloadJsonData);
             document.getElementById('uploadJsonBtn').addEventListener('click', uploadJsonFile);
-            document.getElementById('jsonFileInput').addEventListener('change', function(e) {
-                // Kodea hemen (administratzaile baimenak egiaztatu)
-            });
             
             // Event listenerrak gehitu
             document.getElementById('degreeSelect').addEventListener('change', window.onDegreeChange);
@@ -890,11 +835,7 @@
                 window.updateSubjectRAs(this.value);
             });
             document.getElementById('addUnitBtn').addEventListener('click', window.addUnit);
-            document.getElementById('uploadJsonBtn').addEventListener('click', uploadJsonFile);
-            document.getElementById('supabaseViewBtn').addEventListener('click', viewSupabaseData);
-            document.getElementById('supabaseSaveBtn').addEventListener('click', saveCurriculumData);
             document.getElementById('saveBtn').addEventListener('click', saveCurriculumData);
-            document.getElementById('downloadBackupBtn').addEventListener('click', window.downloadJsonData);
             
             // JSON fitxategia kargatzeko event listener
             document.getElementById('jsonFileInput').addEventListener('change', function(e) {
@@ -930,6 +871,7 @@
     </script>
 </body>
 </html>
+
 
 
 
