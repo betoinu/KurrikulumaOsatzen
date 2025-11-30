@@ -240,17 +240,37 @@
         window.selectedDegree = null;
         window.selectedYear = null;
         window.selectedSubjectIndex = null;
-        window.userId = "anonimoa";
-        window.isAuthReady = true;
 
-        <!-- Gehitu Authentication -->
-        // Auth funtzioak
+        // 4. ADMIN EMAILAK
+        const ADMIN_EMAILS = ['josuayerbe@idarte.eus'];
+        const ALLOWED_DOMAINS = ['idarte.eus'];
+
+        // 5. FUNtzioak DEFINITU
+        function checkSupabaseStatus() {
+            console.log('✅ Supabase konektatuta');
+            return true;
+        }
+        
+        function isAdmin(user) {
+            return user && ADMIN_EMAILS.includes(user.email);
+        }
+        
+        function isValidEmail(email) {
+            if (!email) return false;
+            const domain = email.split('@')[1];
+            return ALLOWED_DOMAINS.includes(domain);
+        }
+
+        async function checkAuth() {
+            const { data: { user } } = await supabase.auth.getUser();
+            return user;
+        }
+        
+        // 6. AUTH FUNtzioak
         window.signInWithGoogle = async function() {
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: {
-                    redirectTo: window.location.origin
-                }
+                options: { redirectTo: window.location.origin }
             });
             if (error) console.error('Errorea saioa hastean:', error);
         }
@@ -260,76 +280,76 @@
             if (error) console.error('Errorea irtetean:', error);
             location.reload();
         }
-
-        // Erabiltzailea egiaztatu
-        async function checkAuth() {
-            const { data: { user } } = await supabase.auth.getUser();
-            return user;
-        }
-
-        // Email dominio baimenduak
-        const ALLOWED_DOMAINS = [
-            'idarte.eus',
-            // Gehitu zure dominioak hemen
-        ];
         
-        // Emaila egiaztatu (dominio generikoa)
-        function isValidEmail(email) {
-            if (!email) return false;
-            
-            const domain = email.split('@')[1];
-            return ALLOWED_DOMAINS.includes(domain);
-        }
-        
-        // Administratzaile email zehatzak
-        const ADMIN_EMAILS = [
-            'josuayerbe@idarte.eus',
-        ];
-        
-        // Erabiltzailea administratzailea den egiaztatu
-        function isAdmin(user) {
-            return user && ADMIN_EMAILS.includes(user.email);
-        }
-
-        // UI eguneraketa (bertsio administratzailearekin)
+        // 7. UI EGUNERAKETA
         async function updateUI() {
             const user = await checkAuth();
-            const isValid = await validateEmail();
             
-            if (user && isValid) {
+            if (user && isValidEmail(user.email)) {
                 const userIsAdmin = isAdmin(user);
                 
-                // Erabiltzaile informazioa
                 document.getElementById('signInBtn').classList.add('hidden');
                 document.getElementById('signOutBtn').classList.remove('hidden');
                 document.getElementById('userInfo').classList.remove('hidden');
+                document.getElementById('appButtons').classList.remove('hidden');
                 document.getElementById('userEmail').textContent = user.email;
                 
-                // Rolaren arabera eguneratu
                 if (userIsAdmin) {
                     document.getElementById('userRole').textContent = 'Administratzailea';
                     document.getElementById('userRole').className = 'text-xs bg-red-500 px-2 py-1 rounded ml-2';
-                    document.getElementById('appButtons').classList.remove('hidden');
+                    document.getElementById('downloadBackupBtn').classList.remove('hidden');
                 } else {
                     document.getElementById('userRole').textContent = 'Irakaslea';
                     document.getElementById('userRole').className = 'text-xs bg-green-500 px-2 py-1 rounded ml-2';
-                    document.getElementById('appButtons').classList.remove('hidden');
-                    // Deskarga botoiak ezkutatu irakasleentzat
                     document.getElementById('downloadBackupBtn').classList.add('hidden');
                 }
                 
-                // Datuak kargatu
                 await loadCurriculumData();
             } else {
-                // Ez dago saioa hasita
                 document.getElementById('signInBtn').classList.remove('hidden');
                 document.getElementById('signOutBtn').classList.add('hidden');
                 document.getElementById('userInfo').classList.add('hidden');
                 document.getElementById('appButtons').classList.add('hidden');
                 document.getElementById('noDataMessage').classList.remove('hidden');
+                document.getElementById('loadingOverlay').classList.add('hidden');
             }
         }
         
+        // 8. DATUAK KARGATU
+        async function loadCurriculumData() {
+            try {
+                console.log('Datuak kargatzen...');
+                
+                // RLS desgaituta dago, datuak kargatu behar dira
+                const { data, error } = await supabase
+                    .from('curriculum_data')
+                    .select('*')
+                    .order('last_updated', { ascending: false })
+                    .limit(1);
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0 && data[0].curriculum) {
+                    window.curriculumData = data[0].curriculum;
+                    console.log('Datuak kargatu dira:', window.curriculumData);
+                    window.showToast('✅ Datuak kargatuak', 'success');
+                    
+                    // UI eguneratu
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                    document.getElementById('noDataMessage').classList.add('hidden');
+                    document.getElementById('navigationPanel').classList.remove('hidden');
+                    window.initializeUI();
+                } else {
+                    throw new Error('Ez dago daturik');
+                }
+                
+            } catch (error) {
+                console.error('Errorea datuak kargatzean:', error);
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                window.showToast('❌ Errorea datuak kargatzean', 'error');
+            }
+        }    
+   
         // Emaila egiaztatu
         async function validateEmail() {
             const { data: { user } } = await supabase.auth.getUser();
@@ -345,60 +365,6 @@
             return true;
         }
         
-        // Datuak kargatu (Auth egiaztatuta)
-        async function loadCurriculumData() {
-            const user = await checkAuth();
-            
-            if (!user) {
-                document.getElementById('loadingOverlay').classList.add('hidden');
-                document.getElementById('noDataMessage').classList.remove('hidden');
-                document.getElementById('navigationPanel').classList.add('hidden');
-                window.showToast('❌ Mesedez, hasi saioa datuak ikusteko', 'error');
-                return;
-            }
-        
-        // Datuak kargatu Supabase-tik
-        async function loadCurriculumData() {
-            try {
-                console.log('Datuak kargatzen Supabase-tik...');
-                
-                // 1. Datuak lortu Supabase-tik (azkena hartu)
-                const { data, error } = await supabase
-                    .from('curriculum_data')
-                    .select('*')
-                    .order('last_updated', { ascending: false })
-                    .limit(1);
-                
-                if (error) {
-                    console.error('Supabase errorea:', error);
-                    throw error;
-                }
-                
-                // 2. Datuak prozesatu
-                if (data && data.length > 0 && data[0].curriculum) {
-                    console.log('Datuak aurkitu dira Supabase-n');
-                    window.curriculumData = data[0].curriculum;
-                    window.showToast('✅ Datuak kargatuak Supabase-tik', 'success');
-                } else {
-                    // 3. Ez badaude daturik, JSON lokala kargatu
-                    console.log('Ez dago daturik Supabase-n, JSON lokala kargatzen...');
-                    await loadLocalJsonData(true);
-                    return;
-                }
-                
-            } catch (error) {
-                // 4. Errore bat badago, JSON lokala kargatu
-                console.error('Supabase errorea, JSON lokala kargatzen:', error);
-                await loadLocalJsonData(true);
-                return;
-            }
-            
-            // 5. UI eguneratu
-            document.getElementById('loadingOverlay').classList.add('hidden');
-            updateAuthUI(true);
-            window.initializeUI();
-        }
-
         // Datuak gorde Supabase-n
         // Datuak gorde (erabiltzaile infoarekin)
         async function saveCurriculumData() {
@@ -964,6 +930,7 @@
     </script>
 </body>
 </html>
+
 
 
 
