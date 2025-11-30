@@ -53,44 +53,50 @@
     <!-- Goiburua -->
     <header class="bg-indigo-700 text-white p-4 shadow-lg">
         <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
-            <h1 class="text-2xl font-bold mb-4 md:mb-0"><i class="fas fa-graduation-cap mr-2"></i>Curriculum Kudeatzailea</h1>
+            <h1 class="text-2xl font-bold mb-4 md:mb-0">
+                <i class="fas fa-graduation-cap mr-2"></i>Curriculum Kudeatzailea
+            </h1>
             
             <div class="flex flex-wrap gap-2 md:gap-4 items-center justify-end">
+                <!-- Auth botoiak -->
+                <div id="authButtons" class="flex gap-2">
+                    <button id="signInBtn" onclick="signInWithGoogle()" 
+                        class="bg-white text-indigo-700 px-3 py-1.5 rounded flex items-center text-sm">
+                        <i class="fab fa-google mr-2"></i>Hasi Saioa
+                    </button>
+                    <button id="signOutBtn" onclick="signOut()" 
+                        class="bg-red-500 text-white px-3 py-1.5 rounded flex items-center text-sm hidden">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Irten
+                    </button>
+                </div>
                 
-                <!-- JSON Karga Botoia -->
-                <button id="localJsonLoadBtn" class="bg-yellow-500 hover:bg-yellow-600 px-3 py-1.5 rounded transition flex items-center text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hidden" title="Kargatu aurrez kargatutako JSON datuak berrezartzeko">
-                    <i class="fas fa-file-upload mr-2"></i> Kargatu Tokiko JSON
-                </button>
+                <!-- Erabiltzaile informazioa -->
+                <div id="userInfo" class="hidden items-center gap-2">
+                    <span id="userEmail" class="text-xs bg-indigo-500 px-2 py-1 rounded truncate max-w-[150px]"></span>
+                    <span id="userRole" class="text-xs bg-green-500 px-2 py-1 rounded">Irakaslea</span>
+                </div>
                 
-                <!-- JSON Fitxategia Kargatzeko Botoia -->
-                <button id="uploadJsonBtn" class="bg-purple-500 hover:bg-purple-600 px-3 py-1.5 rounded transition flex items-center text-sm">
-                    <i class="fas fa-file-upload mr-2"></i> Kargatu JSON
-                </button>
-                <input type="file" id="jsonFileInput" accept=".json" class="hidden">
-                
-                <!-- Supabase Botoiak -->
-                <button id="supabaseViewBtn" class="bg-indigo-600 hover:bg-indigo-800 px-3 py-1.5 rounded transition flex items-center text-sm">
-                    <i class="fas fa-database mr-2"></i> Supabase Datuak
-                </button>
-                
-                <button id="supabaseSaveBtn" class="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded transition flex items-center text-sm">
-                    <i class="fas fa-cloud-upload-alt mr-2"></i> Gorde Supabase
-                </button>
-                
-                <!-- JSON Deskarga Botoia (Segurtasun Kopia) -->
-                <button id="downloadBackupBtn" class="bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded transition flex items-center text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="fas fa-download mr-2"></i> Deskargatu JSON
-                </button>
-                
-                <!-- Gorde Botoia (Lankidetza) -->
-                <button id="saveBtn" class="bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded transition flex items-center text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="fas fa-save mr-2"></i> Aldaketak Gorde
-                </button>
-                
-                <!-- Erabiltzailearen Egoera -->
-                <span id="authStatusContainer" class="flex items-center gap-2">
-                    <span id="userIdDisplay" class="text-xs bg-indigo-500 px-2 py-1 rounded-full italic font-mono truncate max-w-[100px] sm:max-w-xs">Supabase</span>
-                </span>
+                <!-- App botoiak (rolaren arabera) -->
+                <div id="appButtons" class="hidden flex-wrap gap-2">
+                    <!-- Botoi guztientzat -->
+                    <button id="saveBtn" class="bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded transition flex items-center text-sm">
+                        <i class="fas fa-save mr-2"></i> Gorde
+                    </button>
+                    
+                    <!-- SUPABASE BOTOIAK (guztientzat) -->
+                    <button onclick="viewSupabaseData()" class="bg-indigo-600 hover:bg-indigo-800 px-3 py-1.5 rounded transition flex items-center text-sm">
+                        <i class="fas fa-database mr-2"></i> Datuak Ikusi
+                    </button>
+                    
+                    <!-- 🛑 ADMIN BOTOIAK (soilik administratzaileentzat) -->
+                    <button id="downloadBackupBtn" class="bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded transition flex items-center text-sm hidden">
+                        <i class="fas fa-download mr-2"></i> Deskargatu JSON
+                    </button>
+                    
+                    <button id="uploadJsonBtn" class="bg-purple-500 hover:bg-purple-600 px-3 py-1.5 rounded transition flex items-center text-sm hidden">
+                        <i class="fas fa-file-upload mr-2"></i> Kargatu JSON
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -237,6 +243,120 @@
         window.userId = "anonimoa";
         window.isAuthReady = true;
 
+        <!-- Gehitu Authentication -->
+        // Auth funtzioak
+        window.signInWithGoogle = async function() {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
+            if (error) console.error('Errorea saioa hastean:', error);
+        }
+        
+        window.signOut = async function() {
+            const { error } = await supabase.auth.signOut();
+            if (error) console.error('Errorea irtetean:', error);
+            location.reload();
+        }
+
+        // Erabiltzailea egiaztatu
+        async function checkAuth() {
+            const { data: { user } } = await supabase.auth.getUser();
+            return user;
+        }
+
+        // Email dominio baimenduak
+        const ALLOWED_DOMAINS = [
+            'idarte.eus',
+            // Gehitu zure dominioak hemen
+        ];
+        
+        // Emaila egiaztatu (dominio generikoa)
+        function isValidEmail(email) {
+            if (!email) return false;
+            
+            const domain = email.split('@')[1];
+            return ALLOWED_DOMAINS.includes(domain);
+        }
+        
+        // Administratzaile email zehatzak
+        const ADMIN_EMAILS = [
+            'josuayerbe@idarte.eus',
+        ];
+        
+        // Erabiltzailea administratzailea den egiaztatu
+        function isAdmin(user) {
+            return user && ADMIN_EMAILS.includes(user.email);
+        }
+
+        // UI eguneraketa (bertsio administratzailearekin)
+        async function updateUI() {
+            const user = await checkAuth();
+            const isValid = await validateEmail();
+            
+            if (user && isValid) {
+                const userIsAdmin = isAdmin(user);
+                
+                // Erabiltzaile informazioa
+                document.getElementById('signInBtn').classList.add('hidden');
+                document.getElementById('signOutBtn').classList.remove('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+                document.getElementById('userEmail').textContent = user.email;
+                
+                // Rolaren arabera eguneratu
+                if (userIsAdmin) {
+                    document.getElementById('userRole').textContent = 'Administratzailea';
+                    document.getElementById('userRole').className = 'text-xs bg-red-500 px-2 py-1 rounded ml-2';
+                    document.getElementById('appButtons').classList.remove('hidden');
+                } else {
+                    document.getElementById('userRole').textContent = 'Irakaslea';
+                    document.getElementById('userRole').className = 'text-xs bg-green-500 px-2 py-1 rounded ml-2';
+                    document.getElementById('appButtons').classList.remove('hidden');
+                    // Deskarga botoiak ezkutatu irakasleentzat
+                    document.getElementById('downloadBackupBtn').classList.add('hidden');
+                }
+                
+                // Datuak kargatu
+                await loadCurriculumData();
+            } else {
+                // Ez dago saioa hasita
+                document.getElementById('signInBtn').classList.remove('hidden');
+                document.getElementById('signOutBtn').classList.add('hidden');
+                document.getElementById('userInfo').classList.add('hidden');
+                document.getElementById('appButtons').classList.add('hidden');
+                document.getElementById('noDataMessage').classList.remove('hidden');
+            }
+        }
+        
+        // Emaila egiaztatu
+        async function validateEmail() {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) return false;
+            
+            if (!ALLOWED_EMAILS.includes(user.email)) {
+                await supabase.auth.signOut();
+                window.showToast('❌ Zure emailak ez du sarrerarik', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Datuak kargatu (Auth egiaztatuta)
+        async function loadCurriculumData() {
+            const user = await checkAuth();
+            
+            if (!user) {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                document.getElementById('noDataMessage').classList.remove('hidden');
+                document.getElementById('navigationPanel').classList.add('hidden');
+                window.showToast('❌ Mesedez, hasi saioa datuak ikusteko', 'error');
+                return;
+            }
+        
         // Datuak kargatu Supabase-tik
         async function loadCurriculumData() {
             try {
@@ -280,34 +400,28 @@
         }
 
         // Datuak gorde Supabase-n
+        // Datuak gorde (erabiltzaile infoarekin)
         async function saveCurriculumData() {
+            const user = await checkAuth();
+            if (!user) return;
+            
             try {
-                console.log('Datuak gordetzen Supabase-n...');
-                
-                // Egiaztatu datuak daudela
-                if (!window.curriculumData || Object.keys(window.curriculumData).length === 0) {
-                    window.showToast('❌ Ez dago daturik gordetzeko', 'error');
-                    return;
-                }
-                
                 const { error } = await supabase
                     .from('curriculum_data')
                     .upsert({
                         curriculum: window.curriculumData,
                         last_updated: new Date().toISOString(),
-                        updated_by: window.userId || 'user'
-                    }, {
-                        onConflict: 'id'
+                        updated_by: user.email,  // 🆕 Nork egin duen
+                        user_role: isAdmin(user) ? 'admin' : 'teacher'  // 🆕 Rola gorde
                     });
                 
                 if (error) throw error;
                 
-                console.log('Datuak gorde dira Supabase-n!');
-                window.showToast('✅ Datuak gorde dira Supabase-n!', 'success');
+                window.showToast('✅ Datuak gorde dira!', 'success');
                 
             } catch (error) {
-                console.error('ERROREA datuak gordetzean:', error);
-                window.showToast('❌ Errorea gordetzean: ' + error.message, 'error');
+                console.error('Errorea gordetzean:', error);
+                window.showToast('❌ Errorea gordetzean', 'error');
             }
         }
         
@@ -361,17 +475,30 @@
             }
         }
 
-        // Datuak ikusi Supabase-n (debug)
+        // Datuak ikusi Supabase-n (nork egin duen ikusi)
         async function viewSupabaseData() {
+            const user = await checkAuth();
+            if (!user) return;
+            
             try {
                 const { data, error } = await supabase
                     .from('curriculum_data')
-                    .select('*');
+                    .select('*')
+                    .order('last_updated', { ascending: false });
                 
                 if (error) throw error;
                 
-                console.log('Supabase Datuak:', data);
-                alert(`Supabase-n dauden erregistroak: ${data.length}\nIkusi kontsola datu guztiekin.`);
+                console.log('Supabase Datuak (nork egin duen):', data);
+                
+                // Datuak erakutsi mezu batean
+                let message = `Supabase-n dauden erregistroak: ${data.length}\n\n`;
+                data.forEach((item, index) => {
+                    message += `${index + 1}. Data: ${new Date(item.last_updated).toLocaleString('eu-EU')}\n`;
+                    message += `   Erabiltzailea: ${item.updated_by}\n`;
+                    message += `   Rola: ${item.user_role || 'ez dago'}\n\n`;
+                });
+                
+                alert(message);
                 
             } catch (error) {
                 console.error('Errorea datuak ikustean:', error);
@@ -493,29 +620,49 @@
         }
         
         // --- JSON Deskarga Funtzioa (Segurtasun Kopia) ---
-        window.downloadJsonData = function() {
+        // Datuak deskargatu (soilik administratzaileentzat)
+        window.downloadJsonData = async function() {
+            const user = await checkAuth();
+            
+            if (!isAdmin(user)) {
+                window.showToast('❌ Baimenik ez deskargatzeko', 'error');
+                return;
+            }
+            
             if (!window.curriculumData) {
                 window.showToast("Ez dago daturik deskargatzeko!", "error");
                 return;
             }
+            
             try {
                 const dataStr = JSON.stringify(window.curriculumData, null, 2);
                 const blob = new Blob([dataStr], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                // Fitxategi izena data-rekin sortu
                 const date = new Date().toISOString().slice(0, 10);
                 a.download = `curriculum_backup_${date}.json`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                window.showToast("Datuak JSON fitxategi gisa deskargatu dira (segurtasun kopia).", "success");
+                window.showToast("✅ Datuak deskargatu dira (soilik administratzailea)", "success");
             } catch (e) {
                 console.error("JSON deskarga errorea:", e);
                 window.showToast("Errorea datuak deskargatzean.", "error");
             }
+        }
+        
+        // JSON kargatu (soilik administratzaileentzat)
+        async function uploadJsonFile() {
+            const user = await checkAuth();
+            
+            if (!isAdmin(user)) {
+                window.showToast('❌ Baimenik ez kargatzeko', 'error');
+                return;
+            }
+            
+            document.getElementById('jsonFileInput').click();
         }
 
         // --- UI Rendering eta Ekintza Funtzioak ---
@@ -748,9 +895,22 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Supabase egoera egiaztatu
             checkSupabaseStatus();
-            
+            // Datuak kargatu
+            updateUI();
+            // Auth aldaketak entzun
+            supabase.auth.onAuthStateChange((event, session) => {
+                console.log('Auth aldaketa:', event);
+                updateUI();
+            });
             // Datuak kargatu orria kargatzean
             loadCurriculumData();
+            
+            // Botoiak administratzaileentzat
+            document.getElementById('downloadBackupBtn').addEventListener('click', window.downloadJsonData);
+            document.getElementById('uploadJsonBtn').addEventListener('click', uploadJsonFile);
+            document.getElementById('jsonFileInput').addEventListener('change', function(e) {
+                // Kodea hemen (administratzaile baimenak egiaztatu)
+            });
             
             // Event listenerrak gehitu
             document.getElementById('degreeSelect').addEventListener('change', window.onDegreeChange);
@@ -804,6 +964,7 @@
     </script>
 </body>
 </html>
+
 
 
 
