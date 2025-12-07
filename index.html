@@ -378,6 +378,15 @@
     
         // Supabase hasieratu
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Después de: const supabase = window.supabase.createClient(...);
+
+        // Detectar si hay sesión en la URL (después de redirección de Google)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        if (hashParams.has('access_token') || hashParams.has('error')) {
+            console.log('🔐 Procesando redirección de Google...');
+            // Limpiar URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
         // Reemplaza o actualiza tu onAuthStateChange
         supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('🔐 Auth aldaketa:', event);
@@ -489,26 +498,19 @@
         // 6. AUTH FUNtzioak
         window.signInWithGoogle = async function() {
             try {
-                console.log('🔐 Google saioa hasten...');
-                
-                const { data, error } = await supabase.auth.signInWithOAuth({
+                const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: { 
-                        redirectTo: 'https://betoinu.github.io/Curriculum-Data-Store/'  // 🔥 ALDATU HAU
+                        redirectTo: window.location.href  // 🔥 CAMBIA ESTO
                     }
                 });
                 
-                if (error) {
-                    console.error('❌ Google Auth errorea:', error);
-                    window.showToast('❌ Errorea Google saioa hastean: ' + error.message, 'error');
-                } else {
-                    console.log('✅ Google Auth ondo:', data);
-                }
+                if (error) throw error;
             } catch (error) {
-                console.error('💥 Salbuespena Google Auth:', error);
+                console.error('Error Google Auth:', error);
                 window.showToast('❌ Errorea Google saioa hastean', 'error');
             }
-        }
+        };
         
         window.signOut = async function() {
             try {
@@ -673,99 +675,20 @@
         }        
         // UI EGUNERAKETA
         async function updateUI() {
-            try {
-                const user = await checkAuth();
-                
-                // 🔥 VERIFICAR QUE LOS ELEMENTOS EXISTAN ANTES DE USARLOS
-                const userEmailEl = document.getElementById('userEmail');
-                const userRoleEl = document.getElementById('userRole');
-                const signInBtn = document.getElementById('signInBtn');
-                const signOutBtn = document.getElementById('signOutBtn');
-                const userInfo = document.getElementById('userInfo');
-                const appButtons = document.getElementById('appButtons');
-                const noDataMessage = document.getElementById('noDataMessage');
-                const navigationPanel = document.getElementById('navigationPanel');
-                const loadingOverlay = document.getElementById('loadingOverlay');
-                const welcomeEditor = document.getElementById('welcomeEditor');
-                const editorPanel = document.getElementById('editorPanel');
-                
-                // 🔥 SI NO EXISTEN LOS ELEMENTOS, ESPERAR
-                if (!userEmailEl || !signInBtn) {
-                    console.warn('⚠️ Elementos UI no cargados aún, reintentando...');
-                    setTimeout(updateUI, 100);
-                    return;
-                }
-                
-                if (user && isValidEmail(user.email)) {
-                    const userIsAdmin = isAdmin(user);
-                    
-                    // 🔥 UI elementuak eguneratu (saioa hasita)
-                    signInBtn.classList.add('hidden');
-                    signOutBtn.classList.remove('hidden');
-                    userInfo.classList.remove('hidden');
-                    appButtons.classList.remove('hidden');
-                    userEmailEl.textContent = user.email;
-                    
-                    if (userIsAdmin) {
-                        userRoleEl.textContent = 'Administratzailea';
-                        userRoleEl.className = 'text-xs bg-red-500 px-2 py-1 rounded ml-2';
-                        document.getElementById('downloadBackupBtn')?.classList.remove('hidden');
-                        document.getElementById('uploadJsonBtn')?.classList.remove('hidden');
-                    } else {
-                        userRoleEl.textContent = 'Irakaslea';
-                        userRoleEl.className = 'text-xs bg-green-500 px-2 py-1 rounded ml-2';
-                        document.getElementById('downloadBackupBtn')?.classList.add('hidden');
-                        document.getElementById('uploadJsonBtn')?.classList.add('hidden');
-                    }
-                    
-                    // 🔥 DATUAK KARGATU soilik behar badira
-                    if (!window.curriculumData) {
-                        await loadCurriculumData();
-                    } else {
-                        // 🔥 DATUAK BADAUDE - UI baino erakutsi
-                        loadingOverlay?.classList.add('hidden');
-                        noDataMessage?.classList.add('hidden');
-                        navigationPanel?.classList.remove('hidden');
-                        
-                        // UI-aren egoera berreskuratu
-                        if (window.selectedDegree && window.selectedYear && window.selectedSubjectIndex !== null) {
-                            window.loadSubjectEditor?.(window.selectedSubjectIndex);
-                        } else {
-                            window.initializeUI?.();
-                        }
-                    }
-                    
-                } else {
-                    // 🔥 SAIORIK EZ - UI EZKUTATU baina DATUAK MANTENDU
-                    signInBtn.classList.remove('hidden');
-                    signOutBtn.classList.add('hidden');
-                    userInfo.classList.add('hidden');
-                    appButtons.classList.add('hidden');
-                    noDataMessage?.classList.remove('hidden');
-                    navigationPanel?.classList.add('hidden');
-                    loadingOverlay?.classList.add('hidden');
-                    
-                    // 🔥 EDITOREA EZKUTATU
-                    welcomeEditor?.classList.remove('hidden');
-                    editorPanel?.classList.add('hidden');
-                    
-                    // 🔥 Soilik selektoreak reset (segurtasunerako)
-                    window.selectedDegree = null;
-                    window.selectedYear = null;
-                    window.selectedSubjectIndex = null;
-                    
-                    // 🔥 UI elementuak reset (segurtasunerako)
-                    document.getElementById('degreeSelect') && 
-                        (document.getElementById('degreeSelect').innerHTML = '<option value="">-- Aukeratu Gradua --</option>');
-                    document.getElementById('yearButtons') && 
-                        (document.getElementById('yearButtons').innerHTML = '');
-                    document.getElementById('subjectList') && 
-                        (document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu irakasgaiak ikusteko...</li>');
-                }
-            } catch (error) {
-                console.error('❌ Error en updateUI:', error);
-            }
+        // 🔥 REEMPLAZA la llamada a checkAuth() con esto:
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('🔍 Usuario en updateUI:', user ? user.email : 'NO USER');
+        console.log('🔍 ¿Email válido?:', user ? isValidEmail(user.email) : 'NO USER');
+        
+        // 🔥 ELIMINA esta línea: const user = await checkAuth();
+        
+        // Ahora tu código original sigue...
+        if (user && isValidEmail(user.email)) {
+            // ...
+        } else {
+            // ...
         }
+    }
         
         // DATUAK KARGATU
         async function loadCurriculumData() {
@@ -1429,6 +1352,7 @@
     </script>
 </body>
 </html>
+
 
 
 
