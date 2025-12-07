@@ -7,11 +7,17 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta http-equiv="Content-Security-Policy" 
-          content="default-src 'self'; 
-                   script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://rthjrzmkozvungmiiikt.supabase.co 'unsafe-inline' 'unsafe-eval'; 
-                   style-src 'self' https://unpkg.com https://cdnjs.cloudflare.com 'unsafe-inline'; 
-                   connect-src 'self' https://rthjrzmkozvungmiiikt.supabase.co https://*.supabase.co; 
-                   frame-src 'self' https://*.supabase.co;">
+          content="default-src 'self';
+                   script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://rthjrzmkozvungmiiikt.supabase.co 'unsafe-inline' 'unsafe-eval';
+                   style-src 'self' https://cdnjs.cloudflare.com https://unpkg.com 'unsafe-inline';
+                   font-src 'self' https://cdnjs.cloudflare.com data:;
+                   img-src 'self' data: https:;
+                   connect-src 'self' https://rthjrzmkozvungmiiikt.supabase.co wss://rthjrzmkozvungmiiikt.supabase.co https://*.supabase.co wss://*.supabase.co;
+                   frame-src 'self' https://rthjrzmkozvungmiiikt.supabase.co https://*.supabase.co;
+                   media-src 'self';
+                   object-src 'none';
+                   base-uri 'self';
+                   form-action 'self' https://rthjrzmkozvungmiiikt.supabase.co;">
     <title>Curriculum Kudeatzailea (Supabase)</title>
     <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
     <script>
@@ -49,6 +55,82 @@
             z-index: 50;
         }
     </style>
+    <script>
+    // 🔥 BLOQUEADOR DEFINITIVO DE TAC/ADS
+    (function() {
+        console.log('🛡️ Activando bloqueador de scripts maliciosos...');
+        
+        // 1. Eliminar scripts TAC inmediatamente
+        const removeTACScripts = () => {
+            document.querySelectorAll('script').forEach(script => {
+                const src = script.src || '';
+                if (src.includes('content-v2') || src.includes('tac') || src.includes('ad')) {
+                    console.log('🗑️ Eliminando script malicioso:', src);
+                    script.remove();
+                }
+            });
+        };
+        
+        // 2. Bloquear creación dinámica
+        const originalCreateElement = document.createElement;
+        document.createElement = function(tagName) {
+            const element = originalCreateElement.call(this, tagName);
+            
+            if (tagName.toLowerCase() === 'script') {
+                const originalSetAttribute = element.setAttribute;
+                element.setAttribute = function(name, value) {
+                    if (name === 'src' && value && 
+                        (value.includes('content-v2') || value.includes('tac') || value.includes('/ads/'))) {
+                        console.log('🚫 Previniendo creación de script malicioso:', value);
+                        // Devuelve el elemento pero evita que se ejecute
+                        element._blocked = true;
+                        return;
+                    }
+                    return originalSetAttribute.call(this, name, value);
+                };
+            }
+            
+            return element;
+        };
+        
+        // 3. Bloquear fetch/XHR
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            const url = args[0];
+            if (typeof url === 'string' && 
+                (url.includes('content-v2') || url.includes('tac.') || url.includes('/ads/'))) {
+                console.log('🚫 Bloqueando fetch malicioso:', url);
+                return Promise.reject(new Error('Recurso bloqueado por seguridad'));
+            }
+            return originalFetch.apply(this, args);
+        };
+        
+        // 4. Ejecutar inmediatamente y periódicamente
+        removeTACScripts();
+        setInterval(removeTACScripts, 2000);
+        
+        // 5. Observar DOM para nuevos scripts
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.tagName === 'SCRIPT' && node.src) {
+                        if (node.src.includes('content-v2') || node.src.includes('tac') || node.src.includes('ad')) {
+                            console.log('👀 Detectado script malicioso:', node.src);
+                            node.remove();
+                        }
+                    }
+                });
+            });
+        });
+        
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+        
+        console.log('✅ Bloqueador activado');
+    })();
+    </script>
     <script>
         // 🔥 DESREGISTRAR SERVICE WORKERS AL CARGAR
         (function() {
@@ -790,25 +872,47 @@
         }
         
         // Denbora errealeko eguneraketak
+        // Función mejorada para setupRealtimeUpdates
         function setupRealtimeUpdates() {
-            supabase
-                .channel('curriculum-changes')
-                .on('postgres_changes', 
-                    { 
-                        event: '*', 
-                        schema: 'public', 
-                        table: 'curriculum_data' 
-                    },
-                    (payload) => {
-                        console.log('DENBORA ERREALEKO ALDAKETA:', payload);
-                        if (payload.new && payload.new.curriculum) {
-                            window.curriculumData = payload.new.curriculum;
-                            window.initializeUI();
-                            window.showToast('🔄 Datuak eguneratu dira (lankideak)', 'normal');
+            try {
+                console.log('🔌 Conectando WebSocket a Supabase...');
+                
+                const channel = supabase
+                    .channel('curriculum-changes')
+                    .on('postgres_changes', 
+                        { 
+                            event: '*', 
+                            schema: 'public', 
+                            table: 'curriculum_data' 
+                        },
+                        (payload) => {
+                            console.log('🔄 Cambio en tiempo real:', payload);
+                            if (payload.new && payload.new.curriculum) {
+                                window.curriculumData = payload.new.curriculum;
+                                if (window.initializeUI) {
+                                    window.initializeUI();
+                                }
+                                window.showToast?.('🔄 Datos actualizados (compañeros)', 'normal');
+                            }
                         }
-                    }
-                )
-                .subscribe();
+                    )
+                    .subscribe((status) => {
+                        console.log('📡 Estado WebSocket:', status);
+                        if (status === 'SUBSCRIBED') {
+                            console.log('✅ WebSocket conectado exitosamente');
+                        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                            console.warn('⚠️ WebSocket cerrado, reintentando en 5s...');
+                            setTimeout(setupRealtimeUpdates, 5000);
+                        }
+                    });
+                    
+                return channel;
+            } catch (error) {
+                console.error('❌ Error conectando WebSocket:', error);
+                // Reintentar después de 10 segundos
+                setTimeout(setupRealtimeUpdates, 10000);
+                return null;
+            }
         }
 
         // Gehitu funtzio hau zure kodean
@@ -1325,6 +1429,7 @@
     </script>
 </body>
 </html>
+
 
 
 
