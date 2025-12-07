@@ -5,32 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">    
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://rthjrzmkozvungmiiikt.supabase.co 'unsafe-inline' 'unsafe-eval'; 
+                   style-src 'self' https://unpkg.com https://cdnjs.cloudflare.com 'unsafe-inline'; 
+                   connect-src 'self' https://rthjrzmkozvungmiiikt.supabase.co https://*.supabase.co; 
+                   frame-src 'self' https://*.supabase.co;">
     <title>Curriculum Kudeatzailea (Supabase)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="config.js"></script>
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
     <script>
-    // 🔥 MOVER ESTO AQUÍ - Definir antes de usar
+    // 🔥 MOVER ESTO AL INICIO - Definiciones críticas
     function checkSupabaseStatus() {
-        console.log('✅ Supabase konektatuta');
+        console.log('✅ Supabase egoera: Konektatuta');
         return true;
     }
     
-    // Datuak automatikoki kargatu orria kargatzean
-    document.addEventListener('DOMContentLoaded', function() {
-        // Supabase egoera egiaztatu
-        checkSupabaseStatus(); // ✅ Ahora existe
-        
-        // Datuak kargatu (Supabase-tik edo JSON lokala)
-        loadCurriculumData();
-    });
+    // 🔥 Función placeholder para evitar errores
+    window.updateUI = async function() {
+        console.log('⚠️ updateUI llamado pero aún no definida completamente');
+    };
     </script>
+    <script src="config.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        /* Style for the editable textarea to look like a list input */
         .editable-list-textarea {
             min-height: 100px;
             white-space: pre-wrap;
@@ -48,7 +49,7 @@
             z-index: 50;
         }
     </style>
-<script>
+    <script>
         // 🔥 DESREGISTRAR SERVICE WORKERS AL CARGAR
         (function() {
             if ('serviceWorker' in navigator) {
@@ -60,7 +61,6 @@
                     });
                 });
                 
-                // También limpiar caché de service workers
                 if (window.caches) {
                     caches.keys().then(function(cacheNames) {
                         cacheNames.forEach(function(cacheName) {
@@ -591,74 +591,97 @@
         }        
         // UI EGUNERAKETA
         async function updateUI() {
-            const user = await checkAuth();
-            
-            if (user && isValidEmail(user.email)) {
-                const userIsAdmin = isAdmin(user);
+            try {
+                const user = await checkAuth();
                 
-                // 🔥 UI elementuak eguneratu (saioa hasita)
-                document.getElementById('signInBtn').classList.add('hidden');
-                document.getElementById('signOutBtn').classList.remove('hidden');
-                document.getElementById('userInfo').classList.remove('hidden');
-                document.getElementById('appButtons').classList.remove('hidden');
-                document.getElementById('userEmail').textContent = user.email;
+                // 🔥 VERIFICAR QUE LOS ELEMENTOS EXISTAN ANTES DE USARLOS
+                const userEmailEl = document.getElementById('userEmail');
+                const userRoleEl = document.getElementById('userRole');
+                const signInBtn = document.getElementById('signInBtn');
+                const signOutBtn = document.getElementById('signOutBtn');
+                const userInfo = document.getElementById('userInfo');
+                const appButtons = document.getElementById('appButtons');
+                const noDataMessage = document.getElementById('noDataMessage');
+                const navigationPanel = document.getElementById('navigationPanel');
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                const welcomeEditor = document.getElementById('welcomeEditor');
+                const editorPanel = document.getElementById('editorPanel');
                 
-                if (userIsAdmin) {
-                    document.getElementById('userRole').textContent = 'Administratzailea';
-                    document.getElementById('userRole').className = 'text-xs bg-red-500 px-2 py-1 rounded ml-2';
-                    document.getElementById('downloadBackupBtn').classList.remove('hidden');
-                    document.getElementById('uploadJsonBtn').classList.remove('hidden');
-                } else {
-                    document.getElementById('userRole').textContent = 'Irakaslea';
-                    document.getElementById('userRole').className = 'text-xs bg-green-500 px-2 py-1 rounded ml-2';
-                    document.getElementById('downloadBackupBtn').classList.add('hidden');
-                    document.getElementById('uploadJsonBtn').classList.add('hidden');
+                // 🔥 SI NO EXISTEN LOS ELEMENTOS, ESPERAR
+                if (!userEmailEl || !signInBtn) {
+                    console.warn('⚠️ Elementos UI no cargados aún, reintentando...');
+                    setTimeout(updateUI, 100);
+                    return;
                 }
                 
-                // 🔥 DATUAK KARGATU soilik behar badira
-                if (!window.curriculumData) {
-                    await loadCurriculumData();
-                } else {
-                    // 🔥 DATUAK BADAUDE - UI baino erakutsi
-                    document.getElementById('loadingOverlay').classList.add('hidden');
-                    document.getElementById('noDataMessage').classList.add('hidden');
-                    document.getElementById('navigationPanel').classList.remove('hidden');
+                if (user && isValidEmail(user.email)) {
+                    const userIsAdmin = isAdmin(user);
                     
-                    // UI-aren egoera berreskuratu
-                    if (window.selectedDegree && window.selectedYear && window.selectedSubjectIndex !== null) {
-                        window.loadSubjectEditor(window.selectedSubjectIndex);
+                    // 🔥 UI elementuak eguneratu (saioa hasita)
+                    signInBtn.classList.add('hidden');
+                    signOutBtn.classList.remove('hidden');
+                    userInfo.classList.remove('hidden');
+                    appButtons.classList.remove('hidden');
+                    userEmailEl.textContent = user.email;
+                    
+                    if (userIsAdmin) {
+                        userRoleEl.textContent = 'Administratzailea';
+                        userRoleEl.className = 'text-xs bg-red-500 px-2 py-1 rounded ml-2';
+                        document.getElementById('downloadBackupBtn')?.classList.remove('hidden');
+                        document.getElementById('uploadJsonBtn')?.classList.remove('hidden');
                     } else {
-                        window.initializeUI();
+                        userRoleEl.textContent = 'Irakaslea';
+                        userRoleEl.className = 'text-xs bg-green-500 px-2 py-1 rounded ml-2';
+                        document.getElementById('downloadBackupBtn')?.classList.add('hidden');
+                        document.getElementById('uploadJsonBtn')?.classList.add('hidden');
                     }
+                    
+                    // 🔥 DATUAK KARGATU soilik behar badira
+                    if (!window.curriculumData) {
+                        await loadCurriculumData();
+                    } else {
+                        // 🔥 DATUAK BADAUDE - UI baino erakutsi
+                        loadingOverlay?.classList.add('hidden');
+                        noDataMessage?.classList.add('hidden');
+                        navigationPanel?.classList.remove('hidden');
+                        
+                        // UI-aren egoera berreskuratu
+                        if (window.selectedDegree && window.selectedYear && window.selectedSubjectIndex !== null) {
+                            window.loadSubjectEditor?.(window.selectedSubjectIndex);
+                        } else {
+                            window.initializeUI?.();
+                        }
+                    }
+                    
+                } else {
+                    // 🔥 SAIORIK EZ - UI EZKUTATU baina DATUAK MANTENDU
+                    signInBtn.classList.remove('hidden');
+                    signOutBtn.classList.add('hidden');
+                    userInfo.classList.add('hidden');
+                    appButtons.classList.add('hidden');
+                    noDataMessage?.classList.remove('hidden');
+                    navigationPanel?.classList.add('hidden');
+                    loadingOverlay?.classList.add('hidden');
+                    
+                    // 🔥 EDITOREA EZKUTATU
+                    welcomeEditor?.classList.remove('hidden');
+                    editorPanel?.classList.add('hidden');
+                    
+                    // 🔥 Soilik selektoreak reset (segurtasunerako)
+                    window.selectedDegree = null;
+                    window.selectedYear = null;
+                    window.selectedSubjectIndex = null;
+                    
+                    // 🔥 UI elementuak reset (segurtasunerako)
+                    document.getElementById('degreeSelect') && 
+                        (document.getElementById('degreeSelect').innerHTML = '<option value="">-- Aukeratu Gradua --</option>');
+                    document.getElementById('yearButtons') && 
+                        (document.getElementById('yearButtons').innerHTML = '');
+                    document.getElementById('subjectList') && 
+                        (document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu irakasgaiak ikusteko...</li>');
                 }
-                
-            } else {
-                // 🔥 SAIORIK EZ - UI EZKUTATU baina DATUAK MANTENDU
-                document.getElementById('signInBtn').classList.remove('hidden');
-                document.getElementById('signOutBtn').classList.add('hidden');
-                document.getElementById('userInfo').classList.add('hidden');
-                document.getElementById('appButtons').classList.add('hidden');
-                document.getElementById('noDataMessage').classList.remove('hidden');
-                document.getElementById('navigationPanel').classList.add('hidden');
-                document.getElementById('loadingOverlay').classList.add('hidden');
-                
-                // 🔥 EDITOREA EZKUTATU
-                document.getElementById('welcomeEditor').classList.remove('hidden');
-                document.getElementById('editorPanel').classList.add('hidden');
-                
-                // 🔥 ❌ EZ GARBIATU DATUAK - CACHE-AN MANTENDU
-                // window.curriculumData = null;  // ❌ EZ EGIN
-                // window.selectedDegree = null;   // ❌ EZ EGIN
-                
-                // 🔥 Soilik selektoreak reset (segurtasunerako)
-                window.selectedDegree = null;
-                window.selectedYear = null;
-                window.selectedSubjectIndex = null;
-                
-                // 🔥 UI elementuak reset (segurtasunerako)
-                document.getElementById('degreeSelect').innerHTML = '<option value="">-- Aukeratu Gradua --</option>';
-                document.getElementById('yearButtons').innerHTML = '';
-                document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu irakasgaiak ikusteko...</li>';
+            } catch (error) {
+                console.error('❌ Error en updateUI:', error);
             }
         }
         
@@ -804,72 +827,7 @@
                 }, 1000);
             }
         }
-        
-        // Dei egin orria kargatzean
-        // Event listenerrak gehitu
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('=== CURRICULUM APP STARTING ===');
-            
-            // 1️⃣ Lehenengo, detektatu logout-a URL-tik
-            const wasLoggedOut = handleLogoutFromUrl();
-            
-            // 2️⃣ Supabase egoera egiaztatu (soilik logout ez bada)
-            if (!wasLoggedOut) {
-                checkSupabaseStatus();
-                updateUI();
-            }
-            
-            // 3️⃣ Denbora errealeko eguneraketak hasi
-            setupRealtimeUpdates();
-            
-            // 4️⃣ Botoiak administratzaileentzat
-            document.getElementById('downloadBackupBtn')?.addEventListener('click', window.downloadJsonData);
-            document.getElementById('uploadJsonBtn')?.addEventListener('click', uploadJsonFile);
-            
-            // 5️⃣ Event listenerrak gehitu
-            document.getElementById('degreeSelect')?.addEventListener('change', window.onDegreeChange);
-            document.getElementById('subjectNameEdit')?.addEventListener('change', function() {
-                window.updateSubjectName(this.value);
-            });
-            document.getElementById('subjectArea')?.addEventListener('change', function() {
-                window.updateSubjectData('arloa', this.value);
-            });
-            document.getElementById('subjectRAs')?.addEventListener('change', function() {
-                window.updateSubjectRAs(this.value);
-            });
-            document.getElementById('addUnitBtn')?.addEventListener('click', window.addUnit);
-            document.getElementById('saveBtn')?.addEventListener('click', saveCurriculumData);
-            
-            // 6️⃣ JSON fitxategia kargatzeko event listener
-            document.getElementById('jsonFileInput')?.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        try {
-                            const jsonData = JSON.parse(e.target.result);
-                            window.curriculumData = jsonData;
-                            window.normalizeData(window.curriculumData);
-                            window.initializeUI();
-                            window.showToast('✅ JSON datuak kargatu dira!', 'success');
-                            
-                            // Automatikoki gorde Supabase-n
-                            setTimeout(() => {
-                                window.saveCurriculumData();
-                            }, 1000);
-                            
-                        } catch (error) {
-                            window.showToast('❌ JSON fitxategi okerra', 'error');
-                        }
-                    };
-                    reader.readAsText(file);
-                }
-            });
-            
-        }); // 🔥 ¡ESTA ES LA LLAVE QUE FALTA!
-
-        console.log('✅ Supabase kodea ondo kargatu da');
-        
+         
         // Supabase-tik datuak berkargatu (behartu)
         async function forceReloadFromSupabase() {
             try {
@@ -1301,51 +1259,42 @@
         window.supabaseGehituDatuak = saveCurriculumData;
 
         // Event listenerrak gehitu
+                // Event listenerrak gehitu
         document.addEventListener('DOMContentLoaded', function() {
-            // Supabase egoera egiaztatu
-            checkSupabaseStatus();
-            // Datuak kargatu
-            updateUI();
-            // Auth aldaketak entzun
-            supabase.auth.onAuthStateChange(async (event, session) => {
-                console.log('Auth aldaketa:', event);
-                
-                if (event === 'SIGNED_OUT') {
-                    // 🔥 Saioa irtetzean - UI ezkutatu baina datuak mantendu
-                    hideCurriculumData();
-                } else if (event === 'SIGNED_IN') {
-                    // 🔥 Saioa hastean - datuak jada baditugu, UI baino erakutsi
-                    if (window.curriculumData) {
-                        document.getElementById('loadingOverlay').classList.add('hidden');
-                        document.getElementById('noDataMessage').classList.add('hidden');
-                        document.getElementById('navigationPanel').classList.remove('hidden');
-                        window.initializeUI();
-                    }
-                }
-                
-                await updateUI();
-            });
+            console.log('=== CURRICULUM APP STARTING ===');
             
-            // Botoiak administratzaileentzat
-            document.getElementById('downloadBackupBtn').addEventListener('click', window.downloadJsonData);
-            document.getElementById('uploadJsonBtn').addEventListener('click', uploadJsonFile);
+            // 1️⃣ Lehenengo, detektatu logout-a URL-tik
+            const wasLoggedOut = handleLogoutFromUrl();
             
-            // Event listenerrak gehitu
-            document.getElementById('degreeSelect').addEventListener('change', window.onDegreeChange);
-            document.getElementById('subjectNameEdit').addEventListener('change', function() {
+            // 2️⃣ Supabase egoera egiaztatu (soilik logout ez bada)
+            if (!wasLoggedOut) {
+                checkSupabaseStatus();
+                updateUI();
+            }
+            
+            // 3️⃣ Denbora errealeko eguneraketak hasi
+            setupRealtimeUpdates();
+            
+            // 4️⃣ Botoiak administratzaileentzat
+            document.getElementById('downloadBackupBtn')?.addEventListener('click', window.downloadJsonData);
+            document.getElementById('uploadJsonBtn')?.addEventListener('click', uploadJsonFile);
+            
+            // 5️⃣ Event listenerrak gehitu
+            document.getElementById('degreeSelect')?.addEventListener('change', window.onDegreeChange);
+            document.getElementById('subjectNameEdit')?.addEventListener('change', function() {
                 window.updateSubjectName(this.value);
             });
-            document.getElementById('subjectArea').addEventListener('change', function() {
+            document.getElementById('subjectArea')?.addEventListener('change', function() {
                 window.updateSubjectData('arloa', this.value);
             });
-            document.getElementById('subjectRAs').addEventListener('change', function() {
+            document.getElementById('subjectRAs')?.addEventListener('change', function() {
                 window.updateSubjectRAs(this.value);
             });
-            document.getElementById('addUnitBtn').addEventListener('click', window.addUnit);
-            document.getElementById('saveBtn').addEventListener('click', saveCurriculumData);
+            document.getElementById('addUnitBtn')?.addEventListener('click', window.addUnit);
+            document.getElementById('saveBtn')?.addEventListener('click', saveCurriculumData);
             
-            // JSON fitxategia kargatzeko event listener
-            document.getElementById('jsonFileInput').addEventListener('change', function(e) {
+            // 6️⃣ JSON fitxategia kargatzeko event listener
+            document.getElementById('jsonFileInput')?.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
@@ -1370,11 +1319,9 @@
                 }
             });
             
-            // Denbora errealeko eguneraketak hasi
-            setupRealtimeUpdates();
-        });
+        }); // 🔥 ¡ESTA ES LA LLAVE QUE FALTA!
 
-        console.log('Supabase kodea kargatuta!');
+        console.log('✅ Supabase kodea ondo kargatu da');
     </script>
 </body>
 </html>
