@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">    
     <title>Curriculum Kudeatzailea (Supabase)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="config.js"></script>
@@ -287,6 +290,33 @@
     
         // Supabase hasieratu
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Reemplaza o actualiza tu onAuthStateChange
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('🔐 Auth aldaketa:', event);
+            
+            // Lehenengo, detektatu logout-a URL-tik
+            if (handleLogoutFromUrl()) {
+                return; // Ez jarraitu logout-a detektatu badugu
+            }
+            
+            // Gero, prozesatu Supabase-ko event-a
+            if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+                console.log('🔄 Supabase-k esan du saioa itxita');
+                
+                // Reset UI baina EZ garbitu URL-a (handleLogoutFromUrl-k jada egin du)
+                if (!window.location.search.includes('logout')) {
+                    resetUIForLoggedOut();
+                }
+                
+            } else if (event === 'SIGNED_IN') {
+                console.log('✅ Supabase-k esan du saioa hasita');
+                await updateUI();
+                
+            } else if (event === 'TOKEN_REFRESHED') {
+                console.log('♻️ Token-a eguneratuta');
+                // Ez egin ezer, token-a berritu da automatikoki
+            }
+        });
 
         // Global variables to store state
         window.curriculumData = null; 
@@ -399,9 +429,131 @@
         }
         
         window.signOut = async function() {
-            const { error } = await supabase.auth.signOut();
-            if (error) console.error('Errorea irtetean:', error);
-            location.reload();
+            try {
+                // 1️⃣ Confirmar con el usuario
+                if (!confirm('Ziur zaude saioa itxi nahi duzula?\n\nHurrengoan berriro Google-rekin hasi beharko duzu saioa.')) {
+                    return; // Utzi erabiltzaileak utzi nahi ez badu
+                }
+                
+                console.log('🚪 Saioa ixteko prozesua hasita...');
+                
+                // 2️⃣ Mostrar karga adierazlea
+                document.getElementById('loadingOverlay').classList.remove('hidden');
+                document.getElementById('loadingText').textContent = 'Saioa ixteko...';
+                
+                // 3️⃣ Cerrar sesión en Supabase (con timeout)
+                const signOutPromise = supabase.auth.signOut();
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout saioa ixteko')), 5000)
+                );
+                
+                const { error } = await Promise.race([signOutPromise, timeoutPromise]);
+                if (error) throw error;
+                
+                console.log('✅ Supabase saioa itxita');
+                
+                // 4️⃣ Limpiar SOLO los datos de nuestra app (no todo el localStorage)
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.includes('curriculum') || key.includes('matrix') || key.includes('supabase')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                keysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                    console.log(`🗑️ Kengatu: ${key}`);
+                });
+                
+                // 5️⃣ Limpiar variables globales
+                window.curriculumData = null;
+                window.selectedDegree = null;
+                window.selectedYear = null;
+                window.selectedSubjectIndex = null;
+                
+                // 6️⃣ Redirigir a la misma página con parámetros anti-cache
+                const cleanUrl = window.location.origin + window.location.pathname;
+                const timestamp = new Date().getTime();
+                const redirectUrl = `${cleanUrl}?logout=true&_=${timestamp}`;
+                
+                console.log(`🔄 Berbideratzen: ${redirectUrl}`);
+                
+                // 7️⃣ Redirigir inmediatamente
+                window.location.href = redirectUrl;
+                
+            } catch (error) {
+                console.error('❌ Errorea irtetean:', error);
+                
+                // Erakutsi errorea
+                window.showToast('❌ Errorea irtetzean. Saiatu berriro.', 'error');
+                
+                // Saiatu berriz kargatzen
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                    window.location.reload();
+                }, 2000);
+            }
+        };
+
+        // 🔥 GEHITU HAU - Detectatu logout URL-an
+        function handleLogoutFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasLogoutParam = urlParams.has('logout');
+            const hasTimestamp = urlParams.has('_');
+            
+            if (hasLogoutParam) {
+                console.log('🔍 Logout parametroa detektatuta URL-an');
+                
+                // 1️⃣ Garbitu URL-a (ez erakutsi logout parametroa)
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+                
+                // 2️⃣ Resetear UI completamente
+                resetUIForLoggedOut();
+                
+                // 3️⃣ Erakutsi mezua
+                window.showToast('✅ Saioa ondo itxita. Berriro hasi saioa ahal izateko.', 'success');
+                
+                // 4️⃣ Egin Supabase sign-out berriro (segurtasunerako)
+                setTimeout(() => {
+                    supabase.auth.signOut().catch(() => {});
+                }, 100);
+                
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // 🔥 GEHITU HAU - Reset UI funtzioa
+        function resetUIForLoggedOut() {
+            // UI elementuak reset
+            document.getElementById('signInBtn').classList.remove('hidden');
+            document.getElementById('signOutBtn').classList.add('hidden');
+            document.getElementById('userInfo').classList.add('hidden');
+            document.getElementById('appButtons').classList.add('hidden');
+            document.getElementById('noDataMessage').classList.remove('hidden');
+            document.getElementById('navigationPanel').classList.add('hidden');
+            document.getElementById('welcomeEditor').classList.remove('hidden');
+            document.getElementById('editorPanel').classList.add('hidden');
+            
+            // Reset selectores
+            document.getElementById('degreeSelect').innerHTML = '<option value="">-- Aukeratu Gradua --</option>';
+            document.getElementById('yearButtons').innerHTML = '';
+            document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu irakasgaiak ikusteko...</li>';
+            
+            // Erakutsi login botoia nabarmen
+            document.getElementById('noDataMessage').innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-door-open text-4xl text-indigo-500 mb-3"></i>
+                    <p class="mb-4 text-gray-700">Saioa itxita. Curriculum datuak ikusteko, berriro hasi saioa.</p>
+                    <button onclick="signInWithGoogle()" 
+                            class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-medium">
+                        <i class="fab fa-google mr-2"></i>Hasi Saioa Google-rekin
+                    </button>
+                </div>
+            `;
         }
         
         async function viewEditHistory() {
@@ -655,8 +807,16 @@
         
         // Dei egin orria kargatzean
         document.addEventListener('DOMContentLoaded', function() {
-            handleAuthRedirect();
-        });
+            console.log('=== CURRICULUM APP STARTING ===');
+            
+            // 1️⃣ Lehenengo, detektatu logout-a URL-tik
+            const wasLoggedOut = handleLogoutFromUrl();
+            
+            // 2️⃣ Supabase egoera egiaztatu (soilik logout ez bada)
+            if (!wasLoggedOut) {
+                checkSupabaseStatus();
+                updateUI();
+            }
         
         // Supabase-tik datuak berkargatu (behartu)
         async function forceReloadFromSupabase() {
@@ -1166,6 +1326,7 @@
     </script>
 </body>
 </html>
+
 
 
 
