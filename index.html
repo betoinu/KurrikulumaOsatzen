@@ -388,32 +388,63 @@
             window.history.replaceState({}, document.title, window.location.pathname);
         }
         // Reemplaza o actualiza tu onAuthStateChange
-        supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('🔐 Auth aldaketa:', event);
+
+        // 🔥 GEHITU HAU hasieran
+let authStateHandled = false;
+
+// Ondoren, onAuthStateChange hobetu
+supabase.auth.onAuthStateChange(async (event, session) => {
+    // 🔥 Saiatu begiztak ekiditeko
+    if (authStateHandled && event === 'INITIAL_SESSION') return;
+    
+    console.log('🔐 Auth aldaketa:', event, session?.user?.email);
+    
+    // Lehenengo logout detektatu
+    if (handleLogoutFromUrl()) {
+        authStateHandled = true;
+        return;
+    }
+    
+    // Gertaera bakoitzeko ekintza espezifikoa
+    switch (event) {
+        case 'SIGNED_IN':
+            console.log('✅ Saioa hasita:', session.user.email);
+            // UI eguneratu baina ez kargatu daturik oraindik
+            await updateUI();
+            // Datuak kargatu 1 segundoren ondoren
+            setTimeout(() => {
+                loadCurriculumData();
+            }, 1000);
+            break;
             
-            // Lehenengo, detektatu logout-a URL-tik
-            if (handleLogoutFromUrl()) {
-                return; // Ez jarraitu logout-a detektatu badugu
-            }
+        case 'SIGNED_OUT':
+            console.log('🚪 Saioa itxita');
+            resetUIForLoggedOut();
+            break;
             
-            // Gero, prozesatu Supabase-ko event-a
-            if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-                console.log('🔄 Supabase-k esan du saioa itxita');
-                
-                // Reset UI baina EZ garbitu URL-a (handleLogoutFromUrl-k jada egin du)
-                if (!window.location.search.includes('logout')) {
-                    resetUIForLoggedOut();
-                }
-                
-            } else if (event === 'SIGNED_IN') {
-                console.log('✅ Supabase-k esan du saioa hasita');
+        case 'INITIAL_SESSION':
+            if (session) {
+                console.log('🔄 Saio existentea detektatuta');
+                // UI eguneratu bakarrik
                 await updateUI();
-                
-            } else if (event === 'TOKEN_REFRESHED') {
-                console.log('♻️ Token-a eguneratuta');
-                // Ez egin ezer, token-a berritu da automatikoki
+                // Datuak kargatu
+                setTimeout(() => {
+                    loadCurriculumData();
+                }, 500);
+            } else {
+                console.log('🔓 Ez dago saio aktiborik');
+                resetUIForLoggedOut();
             }
-        });
+            break;
+            
+        case 'TOKEN_REFRESHED':
+            console.log('♻️ Tokena berritu da');
+            // Ez egin ezer
+            break;
+    }
+    
+    authStateHandled = true;
+});
 
         // Global variables to store state
         window.curriculumData = null; 
@@ -668,49 +699,75 @@
             }
         }        
         // UI EGUNERAKETA
+        let isInitialLoadComplete = false;  // 🔥 GEHITU FLAG BAT
+
         async function updateUI() {
-        // 🔥 REEMPLAZA la llamada a checkAuth() con esto:
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log('🔍 Usuario en updateUI:', user ? user.email : 'NO USER');
-        console.log('🔍 ¿Email válido?:', user ? isValidEmail(user.email) : 'NO USER');
-        
-        // 🔥 ELIMINA esta línea: const user = await checkAuth();
-        
-        // Ahora tu código original sigue...
-        if (user && isValidEmail(user.email)) {
-            // ...
-        } else {
-            // ...
+            // 🔥 LEHENENGO: EGIAZTATU JADA KARGATZEN ARI GAREN
+            if (window.isUpdatingUI) return;
+            window.isUpdatingUI = true;
+            
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                console.log('🔄 updateUI exekutatzen:', user ? user.email : 'Erabiltzailerik gabe');
+                
+                if (user && isValidEmail(user.email)) {
+                    // ✅ 1. UI Erakutsi (baina ez kargatu daturik)
+                    document.getElementById('signInBtn').classList.add('hidden');
+                    document.getElementById('signOutBtn').classList.remove('hidden');
+                    document.getElementById('userInfo').classList.remove('hidden');
+                    document.getElementById('appButtons').classList.remove('hidden');
+                    
+                    // ✅ 2. Erabiltzaile informazioa
+                    document.getElementById('userEmail').textContent = user.email;
+                    document.getElementById('userRole').textContent = isAdmin(user) ? 'Admin' : 'Irakaslea';
+                    
+                    // ✅ 3. ADMIN botoiak
+                    if (isAdmin(user)) {
+                        document.getElementById('downloadBackupBtn').classList.remove('hidden');
+                        document.getElementById('uploadJsonBtn').classList.remove('hidden');
+                    }
+                    
+                    // ✅ 4. EZ KARGATU DATUAK HEMEN - Bakarrik UI eguneratu
+                    // Datuak loadCurriculumData() funtzioan kargatuko dira bakarrik
+                    
+                } else {
+                    // ✅ 5. Saioa itxita - UI garbia
+                    resetUIForLoggedOut();
+                }
+                
+            } catch (error) {
+                console.error('❌ Errorea updateUI-n:', error);
+            } finally {
+                window.isUpdatingUI = false;
+            }
         }
-    }
         
         // DATUAK KARGATU
         async function loadCurriculumData() {
+            // 🔥 GEHITU: Egiaztatu jada kargatzen ari garela
+            if (window.isLoadingData) return;
+            window.isLoadingData = true;
+            
             try {
-                console.log('Datuak kargatzen...');
+                console.log('📥 Datuak kargatzen (soilik saioa badago)...');
                 
-                const user = await checkAuth();
+                const { data: { user } } = await supabase.auth.getUser();
                 
-                // 🔥 SAIOA EGIAZTATU - HAU DA GARRANTZITSUENA
-                if (!user) {
-                    console.log('Ez dago erabiltzailerik saiatuta, datuak ezin kargatu');
-                    document.getElementById('loadingOverlay').classList.add('hidden');
-                    document.getElementById('noDataMessage').classList.remove('hidden');
-                    document.getElementById('navigationPanel').classList.add('hidden');
+                // ✅ EGIAZTAPEN TRIPLA:
+                // 1. Erabiltzailea existitzen den
+                // 2. Email balioduna den
+                // 3. Daturik ez dagoeneko kargatuta egon
+                if (!user || !isValidEmail(user.email) || window.curriculumData) {
+                    console.log('⏭️ Datuak ez dira kargatuko:', {
+                        hasUser: !!user,
+                        validEmail: user ? isValidEmail(user.email) : false,
+                        dataAlreadyLoaded: !!window.curriculumData
+                    });
                     return;
                 }
                 
-                // 🔥 EMAILA EGIAZTATU
-                if (!isValidEmail(user.email)) {
-                    console.log('Email desegokia:', user.email);
-                    document.getElementById('loadingOverlay').classList.add('hidden');
-                    document.getElementById('noDataMessage').classList.remove('hidden');
-                    document.getElementById('navigationPanel').classList.add('hidden');
-                    await supabase.auth.signOut();
-                    return;
-                }
-        
-                // Datuak kargatu (soilik saioa hasita badago)
+                // Datuak kargatu
                 const { data, error } = await supabase
                     .from('curriculum_data')
                     .select('*')
@@ -721,31 +778,39 @@
                 
                 if (data && data.length > 0 && data[0].curriculum) {
                     window.curriculumData = data[0].curriculum;
-                    console.log('Datuak kargatu dira:', window.curriculumData);
+                    console.log('✅ Datuak kargatuak Supabase-tik');
                     window.showToast('✅ Datuak kargatuak', 'success');
                     
                     // UI eguneratu
                     document.getElementById('loadingOverlay').classList.add('hidden');
                     document.getElementById('noDataMessage').classList.add('hidden');
                     document.getElementById('navigationPanel').classList.remove('hidden');
-                    window.initializeUI();
+                    
+                    // UI hasieratu
+                    if (window.initializeUI) {
+                        window.initializeUI();
+                    }
                 } else {
-                    // Ez dago daturik Supabase-n, JSON lokala kargatu
-                    console.log('Ez dago daturik Supabase-n, JSON lokala kargatzen...');
+                    // Supabase hutsik → JSON lokala
+                    console.log('📄 Supabase hutsik, JSON lokala kargatzen...');
                     await loadLocalJsonData(true);
                 }
                 
             } catch (error) {
-                console.error('Errorea datuak kargatzean:', error);
+                console.error('❌ Errorea datuak kargatzean:', error);
                 document.getElementById('loadingOverlay').classList.add('hidden');
                 
-                // 🔥 Errorea bada, erakutsi saioa hasteko mezua
-                document.getElementById('noDataMessage').classList.remove('hidden');
-                document.getElementById('navigationPanel').classList.add('hidden');
+                // Errorea bada, erakutsi saioa hasteko mezua
+                if (!window.curriculumData) {
+                    document.getElementById('noDataMessage').classList.remove('hidden');
+                    document.getElementById('navigationPanel').classList.add('hidden');
+                }
                 
                 window.showToast('❌ Errorea datuak kargatzean', 'error');
+            } finally {
+                window.isLoadingData = false;
             }
-        } 
+        }
    
         // Datuak gorde (erabiltzaile infoarekin)
        async function saveCurriculumData() {
@@ -1281,71 +1346,41 @@
 
         // Event listenerrak gehitu
                 // Event listenerrak gehitu
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             console.log('=== CURRICULUM APP STARTING ===');
             
-            // 1️⃣ Lehenengo, detektatu logout-a URL-tik
-            const wasLoggedOut = handleLogoutFromUrl();
+            // 1️⃣ Lehenengo eta behin: Logout detektatu
+            handleLogoutFromUrl();
             
-            // 2️⃣ Supabase egoera egiaztatu (soilik logout ez bada)
-            if (!wasLoggedOut) {
-                checkSupabaseStatus();
-                updateUI();
+            // 2️⃣ Supabase konprobatu (baina ez UI eguneratu)
+            console.log('🔍 Supabase egoera konprobatzen...');
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                // 3️⃣ Ez dago saiorik → UI oinarrizkoa erakutsi
+                resetUIForLoggedOut();
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                return;
             }
             
-            // 3️⃣ Denbora errealeko eguneraketak hasi
-            setupRealtimeUpdates();
+            // 4️⃣ Badago saioa → UI eguneratu
+            await updateUI();
             
-            // 4️⃣ Botoiak administratzaileentzat
-            document.getElementById('downloadBackupBtn')?.addEventListener('click', window.downloadJsonData);
-            document.getElementById('uploadJsonBtn')?.addEventListener('click', uploadJsonFile);
+            // 5️⃣ ONDOREN bakarrik kargatu datuak
+            if (user && isValidEmail(user.email)) {
+                await loadCurriculumData();
+            }
             
-            // 5️⃣ Event listenerrak gehitu
-            document.getElementById('degreeSelect')?.addEventListener('change', window.onDegreeChange);
-            document.getElementById('subjectNameEdit')?.addEventListener('change', function() {
-                window.updateSubjectName(this.value);
-            });
-            document.getElementById('subjectArea')?.addEventListener('change', function() {
-                window.updateSubjectData('arloa', this.value);
-            });
-            document.getElementById('subjectRAs')?.addEventListener('change', function() {
-                window.updateSubjectRAs(this.value);
-            });
-            document.getElementById('addUnitBtn')?.addEventListener('click', window.addUnit);
-            document.getElementById('saveBtn')?.addEventListener('click', saveCurriculumData);
-            
-            // 6️⃣ JSON fitxategia kargatzeko event listener
-            document.getElementById('jsonFileInput')?.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        try {
-                            const jsonData = JSON.parse(e.target.result);
-                            window.curriculumData = jsonData;
-                            window.normalizeData(window.curriculumData);
-                            window.initializeUI();
-                            window.showToast('✅ JSON datuak kargatu dira!', 'success');
-                            
-                            // Automatikoki gorde Supabase-n
-                            setTimeout(() => {
-                                window.saveCurriculumData();
-                            }, 1000);
-                            
-                        } catch (error) {
-                            window.showToast('❌ JSON fitxategi okerra', 'error');
-                        }
-                    };
-                    reader.readAsText(file);
-                }
-            });
-            
-        }); // 🔥 ¡ESTA ES LA LLAVE QUE FALTA!
-
+            // 6️⃣ Azkenik: Denbora errealeko eguneraketak
+            setTimeout(() => {
+                setupRealtimeUpdates();
+            }, 1000);
+        });
         console.log('✅ Supabase kodea ondo kargatu da');
     </script>
 </body>
 </html>
+
 
 
 
