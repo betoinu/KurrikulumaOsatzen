@@ -10,10 +10,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="config.js"></script>
     <script>
+    // 🔥 MOVER ESTO AQUÍ - Definir antes de usar
+    function checkSupabaseStatus() {
+        console.log('✅ Supabase konektatuta');
+        return true;
+    }
+    
     // Datuak automatikoki kargatu orria kargatzean
     document.addEventListener('DOMContentLoaded', function() {
         // Supabase egoera egiaztatu
-        checkSupabaseStatus();
+        checkSupabaseStatus(); // ✅ Ahora existe
         
         // Datuak kargatu (Supabase-tik edo JSON lokala)
         loadCurriculumData();
@@ -380,13 +386,7 @@
             document.getElementById('yearButtons').innerHTML = '';
             document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu...</li>';
         }
-        
-        // FUNtzioak DEFINITU
-        function checkSupabaseStatus() {
-            console.log('✅ Supabase konektatuta');
-            return true;
-        }
-        
+               
         function isAdmin(user) {
             return user && ADMIN_EMAILS.includes(user.email);
         }
@@ -806,6 +806,7 @@
         }
         
         // Dei egin orria kargatzean
+        // Event listenerrak gehitu
         document.addEventListener('DOMContentLoaded', function() {
             console.log('=== CURRICULUM APP STARTING ===');
             
@@ -817,6 +818,57 @@
                 checkSupabaseStatus();
                 updateUI();
             }
+            
+            // 3️⃣ Denbora errealeko eguneraketak hasi
+            setupRealtimeUpdates();
+            
+            // 4️⃣ Botoiak administratzaileentzat
+            document.getElementById('downloadBackupBtn')?.addEventListener('click', window.downloadJsonData);
+            document.getElementById('uploadJsonBtn')?.addEventListener('click', uploadJsonFile);
+            
+            // 5️⃣ Event listenerrak gehitu
+            document.getElementById('degreeSelect')?.addEventListener('change', window.onDegreeChange);
+            document.getElementById('subjectNameEdit')?.addEventListener('change', function() {
+                window.updateSubjectName(this.value);
+            });
+            document.getElementById('subjectArea')?.addEventListener('change', function() {
+                window.updateSubjectData('arloa', this.value);
+            });
+            document.getElementById('subjectRAs')?.addEventListener('change', function() {
+                window.updateSubjectRAs(this.value);
+            });
+            document.getElementById('addUnitBtn')?.addEventListener('click', window.addUnit);
+            document.getElementById('saveBtn')?.addEventListener('click', saveCurriculumData);
+            
+            // 6️⃣ JSON fitxategia kargatzeko event listener
+            document.getElementById('jsonFileInput')?.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const jsonData = JSON.parse(e.target.result);
+                            window.curriculumData = jsonData;
+                            window.normalizeData(window.curriculumData);
+                            window.initializeUI();
+                            window.showToast('✅ JSON datuak kargatu dira!', 'success');
+                            
+                            // Automatikoki gorde Supabase-n
+                            setTimeout(() => {
+                                window.saveCurriculumData();
+                            }, 1000);
+                            
+                        } catch (error) {
+                            window.showToast('❌ JSON fitxategi okerra', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+        }); // 🔥 ¡ESTA ES LA LLAVE QUE FALTA!
+
+        console.log('✅ Supabase kodea ondo kargatu da');
         
         // Supabase-tik datuak berkargatu (behartu)
         async function forceReloadFromSupabase() {
@@ -1326,6 +1378,7 @@
     </script>
 </body>
 </html>
+
 
 
 
