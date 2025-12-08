@@ -967,7 +967,401 @@ window.setupEventListeners = function() {
             console.log('✅ Normalización completada');
             return data;
         };
-        
+
+            // 🔥 FUNCIÓN MEJORADA DE VERIFICACIÓN
+            function verificarEstructuraDatos() {
+                if (!window.curriculumData) {
+                    console.log('⏳ Ez dago daturik egiaztatzeko');
+                    return;
+                }
+                
+                console.log('🔍 DATUEN EGITURA EGIAZTATZEN...');
+                
+                const resultados = {
+                    grados: [],
+                    competencias: { ingreso: false, egreso: false },
+                    errores: [],
+                    avisos: []
+                };
+                
+                // 1. Identificar grados vs competencias
+                Object.keys(window.curriculumData).forEach(key => {
+                    if (key === 'kompetentziak_ingreso') {
+                        resultados.competencias.ingreso = true;
+                        console.log(`✅ Kompetentziak ingreso: ${window.curriculumData[key].length} elementu`);
+                    } 
+                    else if (key === 'kompetentziak_egreso') {
+                        resultados.competencias.egreso = true;
+                        console.log(`✅ Kompetentziak egreso: ${window.curriculumData[key].length} elementu`);
+                    }
+                    else if (key === '_metadata') {
+                        // Ignorar metadatos
+                    }
+                    else {
+                        resultados.grados.push(key);
+                        console.log(`🎓 Grado: ${key}`);
+                    }
+                });
+                
+                // 2. Verificar estructura mínima
+                if (resultados.grados.length === 0) {
+                    resultados.errores.push('❌ Ez dago gradu definitua');
+                }
+                
+                if (!resultados.competencias.ingreso) {
+                    resultados.avisos.push('⚠️ Kompetentziak ingreso ez dago definituta (berria sortuko da automatikoki)');
+                }
+                
+                if (!resultados.competencias.egreso) {
+                    resultados.avisos.push('⚠️ Kompetentziak egreso ez dago definituta (berria sortuko da automatikoki)');
+                }
+                
+                // 3. Mostrar resumen
+                console.log('📊 EGITURA-LABURPENA:');
+                console.log(`• Graduak: ${resultados.grados.length} (${resultados.grados.join(', ')})`);
+                console.log(`• Kompetentziak ingreso: ${resultados.competencias.ingreso ? '✅ BAI' : '❌ EZ'}`);
+                console.log(`• Kompetentziak egreso: ${resultados.competencias.egreso ? '✅ BAI' : '❌ EZ'}`);
+                
+                if (resultados.errores.length > 0) {
+                    console.error('🚨 ERROREAK:', resultados.errores);
+                    window.showToast('⚠️ Datuak egitura akatsek', 'error');
+                }
+                
+                if (resultados.avisos.length > 0) {
+                    console.warn('ℹ️ AVISUAK:', resultados.avisos);
+                    
+                    // Si falta estructura de competencias, crearla automáticamente
+                    if (!resultados.competencias.ingreso || !resultados.competencias.egreso) {
+                        console.log('🔄 Kompetentziak egitura automatikoki sortzen...');
+                        
+                        if (!window.curriculumData.kompetentziak_ingreso) {
+                            window.curriculumData.kompetentziak_ingreso = [];
+                        }
+                        
+                        if (!window.curriculumData.kompetentziak_egreso) {
+                            window.curriculumData.kompetentziak_egreso = [];
+                        }
+                        
+                        // Guardar automáticamente si hay sesión
+                        setTimeout(() => {
+                            if (window.supabase && window.supabase.auth) {
+                                supabase.auth.getUser().then(({data}) => {
+                                    if (data.user) {
+                                        window.saveCurriculumData().then(() => {
+                                            console.log('✅ Kompetentziak egitura automatikoki gordeta');
+                                        });
+                                    }
+                                });
+                            }
+                        }, 2000);
+                    }
+                }
+                
+                if (resultados.errores.length === 0 && resultados.avisos.length === 0) {
+                    console.log('✅ Egitura PERFEKTUA!');
+                }
+                
+                return resultados;
+            }
+            // 🔥 EXTRAER EREMUAK EXISTENTES DE TODAS LAS ASIGNATURAS
+            function extraerEremuakDelCurriculum() {
+                if (!window.curriculumData) {
+                    console.log('❌ Ez dago curriculum daturik');
+                    return [];
+                }
+                
+                const eremuak = new Set();
+                
+                // Recorrer todos los grados y asignaturas
+                Object.values(window.curriculumData).forEach(grado => {
+                    // Saltar si no es un objeto de grado (como competencias)
+                    if (typeof grado !== 'object' || Array.isArray(grado)) {
+                        return;
+                    }
+                    
+                    // Recorrer cursos del grado
+                    Object.values(grado).forEach(curso => {
+                        if (Array.isArray(curso)) {
+                            curso.forEach(asignatura => {
+                                if (asignatura.arloa && asignatura.arloa.trim() !== '') {
+                                    eremuak.add(asignatura.arloa.trim());
+                                }
+                                // También buscar en campo 'eremua' por compatibilidad
+                                if (asignatura.eremua && asignatura.eremua.trim() !== '') {
+                                    eremuak.add(asignatura.eremua.trim());
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                const listaEremuak = Array.from(eremuak).sort();
+                console.log(`📊 Eremuak aurkituak: ${listaEremuak.length}`);
+                console.log(listaEremuak);
+                
+                return listaEremuak;
+            }
+            // 🔥 LLENAR SELECT DE EREMUAK CON OPCIÓN "AÑADIR NUEVO"
+            function llenarSelectEremuakConEditor() {
+                const select = document.getElementById('subjectArea');
+                if (!select) {
+                    console.error('❌ subjectArea select-a ez dago');
+                    return;
+                }
+                
+                // 1. Extraer eremuak existentes
+                const eremuakExistentes = extraerEremuakDelCurriculum();
+                
+                // 2. Guardar valor actual antes de limpiar
+                const valorActual = select.value;
+                
+                // 3. Limpiar y llenar select
+                select.innerHTML = '';
+                
+                // Opción por defecto
+                const optionDefault = document.createElement('option');
+                optionDefault.value = '';
+                optionDefault.textContent = '-- Aukeratu Arloa --';
+                select.appendChild(optionDefault);
+                
+                // Eremuak existentes
+                eremuakExistentes.forEach(eremua => {
+                    const option = document.createElement('option');
+                    option.value = eremua;
+                    option.textContent = eremua;
+                    select.appendChild(option);
+                });
+                
+                // 🔥 OPCIÓN PARA AÑADIR NUEVO EREMUA
+                const optionNuevo = document.createElement('option');
+                optionNuevo.value = '__nuevo__';
+                optionNuevo.textContent = '➕ Gehitu eremu berria...';
+                optionNuevo.style.color = '#4F46E5';
+                optionNuevo.style.fontWeight = 'bold';
+                select.appendChild(optionNuevo);
+                
+                // Restaurar valor anterior si existe
+                if (valorActual && eremuakExistentes.includes(valorActual)) {
+                    select.value = valorActual;
+                }
+                
+                console.log(`✅ Select beteta: ${eremuakExistentes.length} eremu + "Gehitu berria"`);
+                
+                // 4. Event listener especial con detección de "Añadir nuevo"
+                select.addEventListener('change', function() {
+                    if (this.value === '__nuevo__') {
+                        // 🔥 MOSTRAR PROMPT PARA NUEVO EREMUA
+                        const nuevoEremua = prompt('Sartu eremu berriaren izena:', '');
+                        
+                        if (nuevoEremua && nuevoEremua.trim() !== '') {
+                            const eremuaLimpio = nuevoEremua.trim();
+                            
+                            // Añadir al select inmediatamente
+                            const nuevaOption = document.createElement('option');
+                            nuevaOption.value = eremuaLimpio;
+                            nuevaOption.textContent = eremuaLimpio;
+                            
+                            // Insertar antes de la opción "Añadir nuevo"
+                            select.insertBefore(nuevaOption, optionNuevo);
+                            
+                            // Seleccionar el nuevo
+                            select.value = eremuaLimpio;
+                            
+                            // Guardar en asignatura actual
+                            const subject = window.getSelectedSubject();
+                            if (subject) {
+                                subject.arloa = eremuaLimpio;
+                                window.showToast(`✅ Eremu berria gehitu da: ${eremuaLimpio}`, 'success');
+                                window.saveCurriculumData();
+                                
+                                // Actualizar UI
+                                setTimeout(() => {
+                                    llenarSelectEremuakConEditor(); // Actualizar lista
+                                }, 500);
+                            }
+                        } else {
+                            // Cancelar - volver a valor anterior
+                            select.value = '';
+                        }
+                    } else if (this.value !== '') {
+                        // Cambio normal de eremua existente
+                        const subject = window.getSelectedSubject();
+                        if (subject) {
+                            subject.arloa = this.value;
+                            window.showToast(`✅ Eremua eguneratuta: ${this.value}`, 'success');
+                            window.saveCurriculumData();
+                        }
+                    }
+                });
+            }
+            // 🔥 PANEL PARA GESTIONAR TODOS LOS EREMUAK (solo admin)
+            function mostrarEditorEremuak() {
+                // Verificar si es admin
+                supabase.auth.getUser().then(({data: { user }}) => {
+                    if (!user || !ADMIN_EMAILS.includes(user.email)) {
+                        window.showToast('❌ Baimenik ez eremuak kudeatzeko', 'error');
+                        return;
+                    }
+                    
+                    const eremuakExistentes = extraerEremuakDelCurriculum();
+                    
+                    // Crear modal de edición
+                    const modalHTML = `
+                    <div id="eremuakModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-2xl font-bold text-gray-800">
+                                    <i class="fas fa-palette text-purple-600 mr-2"></i>Eremuak Kudeatu
+                                </h2>
+                                <button onclick="document.getElementById('eremuakModal').remove()" 
+                                        class="text-gray-500 hover:text-gray-700 text-2xl">
+                                    &times;
+                                </button>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <h3 class="font-bold text-lg text-gray-700 mb-3">Eremu existenteak (${eremuakExistentes.length})</h3>
+                                <div id="listaEremuak" class="space-y-2 mb-4">
+                                    ${eremuakExistentes.map((eremua, i) => `
+                                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                                            <span class="font-medium">${eremua}</span>
+                                            <div class="flex items-center gap-2">
+                                                <button onclick="renombrarEremua('${eremua}')" 
+                                                        class="text-blue-500 hover:text-blue-700 p-1"
+                                                        title="Berrizendatu">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button onclick="eliminarEremua('${eremua}')" 
+                                                        class="text-red-500 hover:text-red-700 p-1"
+                                                        title="Ezabatu">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="border-t pt-4">
+                                <h3 class="font-bold text-lg text-green-700 mb-3">Eremu berria gehitu</h3>
+                                <div class="flex gap-2">
+                                    <input type="text" id="nuevoEremuaInput" 
+                                           placeholder="Eremu berriaren izena" 
+                                           class="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <button onclick="gehituEremuaBerria()" 
+                                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                                        Gehitu
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 text-center text-sm text-gray-500">
+                                <p><i class="fas fa-info-circle mr-1"></i>Eremuak automatikoki ateratzen dira asignatura guztietatik</p>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                    
+                    document.body.insertAdjacentHTML('beforeend', modalHTML);
+                });
+            }
+            
+            // 🔥 FUNCIONES AUXILIARES PARA EDITAR EREMUAK
+            function renombrarEremua(eremuaViejo) {
+                const nuevoNombre = prompt(`Berrizendatu "${eremuaViejo}":`, eremuaViejo);
+                
+                if (nuevoNombre && nuevoNombre.trim() !== '' && nuevoNombre !== eremuaViejo) {
+                    // Actualizar en TODAS las asignaturas
+                    Object.values(window.curriculumData).forEach(grado => {
+                        if (typeof grado === 'object' && !Array.isArray(grado)) {
+                            Object.values(grado).forEach(curso => {
+                                if (Array.isArray(curso)) {
+                                    curso.forEach(asignatura => {
+                                        if (asignatura.arloa === eremuaViejo) {
+                                            asignatura.arloa = nuevoNombre.trim();
+                                        }
+                                        if (asignatura.eremua === eremuaViejo) {
+                                            asignatura.eremua = nuevoNombre.trim();
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                    
+                    window.showToast(`✅ Eremua berrizendatua: ${eremuaViejo} → ${nuevoNombre}`, 'success');
+                    window.saveCurriculumData();
+                    
+                    // Actualizar UI
+                    setTimeout(() => {
+                        document.getElementById('eremuakModal')?.remove();
+                        mostrarEditorEremuak();
+                        llenarSelectEremuakConEditor();
+                    }, 500);
+                }
+            }
+            
+            function eliminarEremua(eremua) {
+                if (confirm(`Ziur zaude "${eremua}" ezabatu nahi duzula?\n\nAsignatura guztiak "undefined" geratuko dira eremu honetan.`)) {
+                    // Poner null en lugar de eliminar
+                    Object.values(window.curriculumData).forEach(grado => {
+                        if (typeof grado === 'object' && !Array.isArray(grado)) {
+                            Object.values(grado).forEach(curso => {
+                                if (Array.isArray(curso)) {
+                                    curso.forEach(asignatura => {
+                                        if (asignatura.arloa === eremua) {
+                                            asignatura.arloa = null;
+                                        }
+                                        if (asignatura.eremua === eremua) {
+                                            asignatura.eremua = null;
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                    
+                    window.showToast(`🗑️ Eremua ezabatua: ${eremua}`, 'success');
+                    window.saveCurriculumData();
+                    
+                    setTimeout(() => {
+                        document.getElementById('eremuakModal')?.remove();
+                        mostrarEditorEremuak();
+                        llenarSelectEremuakConEditor();
+                    }, 500);
+                }
+            }
+            
+            function gehituEremuaBerria() {
+                const input = document.getElementById('nuevoEremuaInput');
+                if (!input || !input.value.trim()) {
+                    window.showToast('❌ Sartu eremuaren izena', 'error');
+                    return;
+                }
+                
+                const nuevoEremua = input.value.trim();
+                
+                // Verificar que no existe ya
+                const eremuakExistentes = extraerEremuakDelCurriculum();
+                if (eremuakExistentes.includes(nuevoEremua)) {
+                    window.showToast('❌ Eremua jada existitzen da', 'error');
+                    return;
+                }
+                
+                // Añadir al select global
+                llenarSelectEremuakConEditor();
+                
+                window.showToast(`✅ Eremu berria gehitu da: ${nuevoEremua}`, 'success');
+                input.value = '';
+                
+                // Cerrar y reabrir modal para mostrar actualizado
+                setTimeout(() => {
+                    document.getElementById('eremuakModal')?.remove();
+                    mostrarEditorEremuak();
+                }, 300);
+            }
+
+
         // 🔥 MIGRAR ESTRUCTURA VIEJA A NUEVA
         function migrarEstructuraVieja(dataViejo) {
             console.log('🔄 Migrando estructura vieja...');
@@ -1706,6 +2100,17 @@ window.setupEventListeners = function() {
         window.supabaseIkusiDatuak = viewSupabaseData;
         window.supabaseGehituDatuak = saveCurriculumData;
 
+        // ============================================
+        // 🔥 EXPOSICIÓN AL SCOPE GLOBAL
+        // ============================================
+        window.llenarSelectEremuakConEditor = llenarSelectEremuakConEditor;
+        window.mostrarEditorEremuak = mostrarEditorEremuak;
+        window.renombrarEremua = renombrarEremua;
+        window.eliminarEremua = eliminarEremua;
+        window.gehituEremuaBerria = gehituEremuaBerria;
+        window.extraerEremuakDelCurriculum = extraerEremuakDelCurriculum;
+        window.migrarEstructuraVieja = migrarEstructuraVieja;
+
         // ALDATU DOMContentLoaded:
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOM Cargado - Inicialización segura');
@@ -2000,397 +2405,6 @@ window.setupEventListeners = function() {
             }
                     })();
  
-            // 🔥 FUNCIÓN MEJORADA DE VERIFICACIÓN
-            function verificarEstructuraDatos() {
-                if (!window.curriculumData) {
-                    console.log('⏳ Ez dago daturik egiaztatzeko');
-                    return;
-                }
-                
-                console.log('🔍 DATUEN EGITURA EGIAZTATZEN...');
-                
-                const resultados = {
-                    grados: [],
-                    competencias: { ingreso: false, egreso: false },
-                    errores: [],
-                    avisos: []
-                };
-                
-                // 1. Identificar grados vs competencias
-                Object.keys(window.curriculumData).forEach(key => {
-                    if (key === 'kompetentziak_ingreso') {
-                        resultados.competencias.ingreso = true;
-                        console.log(`✅ Kompetentziak ingreso: ${window.curriculumData[key].length} elementu`);
-                    } 
-                    else if (key === 'kompetentziak_egreso') {
-                        resultados.competencias.egreso = true;
-                        console.log(`✅ Kompetentziak egreso: ${window.curriculumData[key].length} elementu`);
-                    }
-                    else if (key === '_metadata') {
-                        // Ignorar metadatos
-                    }
-                    else {
-                        resultados.grados.push(key);
-                        console.log(`🎓 Grado: ${key}`);
-                    }
-                });
-                
-                // 2. Verificar estructura mínima
-                if (resultados.grados.length === 0) {
-                    resultados.errores.push('❌ Ez dago gradu definitua');
-                }
-                
-                if (!resultados.competencias.ingreso) {
-                    resultados.avisos.push('⚠️ Kompetentziak ingreso ez dago definituta (berria sortuko da automatikoki)');
-                }
-                
-                if (!resultados.competencias.egreso) {
-                    resultados.avisos.push('⚠️ Kompetentziak egreso ez dago definituta (berria sortuko da automatikoki)');
-                }
-                
-                // 3. Mostrar resumen
-                console.log('📊 EGITURA-LABURPENA:');
-                console.log(`• Graduak: ${resultados.grados.length} (${resultados.grados.join(', ')})`);
-                console.log(`• Kompetentziak ingreso: ${resultados.competencias.ingreso ? '✅ BAI' : '❌ EZ'}`);
-                console.log(`• Kompetentziak egreso: ${resultados.competencias.egreso ? '✅ BAI' : '❌ EZ'}`);
-                
-                if (resultados.errores.length > 0) {
-                    console.error('🚨 ERROREAK:', resultados.errores);
-                    window.showToast('⚠️ Datuak egitura akatsek', 'error');
-                }
-                
-                if (resultados.avisos.length > 0) {
-                    console.warn('ℹ️ AVISUAK:', resultados.avisos);
-                    
-                    // Si falta estructura de competencias, crearla automáticamente
-                    if (!resultados.competencias.ingreso || !resultados.competencias.egreso) {
-                        console.log('🔄 Kompetentziak egitura automatikoki sortzen...');
-                        
-                        if (!window.curriculumData.kompetentziak_ingreso) {
-                            window.curriculumData.kompetentziak_ingreso = [];
-                        }
-                        
-                        if (!window.curriculumData.kompetentziak_egreso) {
-                            window.curriculumData.kompetentziak_egreso = [];
-                        }
-                        
-                        // Guardar automáticamente si hay sesión
-                        setTimeout(() => {
-                            if (window.supabase && window.supabase.auth) {
-                                supabase.auth.getUser().then(({data}) => {
-                                    if (data.user) {
-                                        window.saveCurriculumData().then(() => {
-                                            console.log('✅ Kompetentziak egitura automatikoki gordeta');
-                                        });
-                                    }
-                                });
-                            }
-                        }, 2000);
-                    }
-                }
-                
-                if (resultados.errores.length === 0 && resultados.avisos.length === 0) {
-                    console.log('✅ Egitura PERFEKTUA!');
-                }
-                
-                return resultados;
-            }
-            // 🔥 EXTRAER EREMUAK EXISTENTES DE TODAS LAS ASIGNATURAS
-            function extraerEremuakDelCurriculum() {
-                if (!window.curriculumData) {
-                    console.log('❌ Ez dago curriculum daturik');
-                    return [];
-                }
-                
-                const eremuak = new Set();
-                
-                // Recorrer todos los grados y asignaturas
-                Object.values(window.curriculumData).forEach(grado => {
-                    // Saltar si no es un objeto de grado (como competencias)
-                    if (typeof grado !== 'object' || Array.isArray(grado)) {
-                        return;
-                    }
-                    
-                    // Recorrer cursos del grado
-                    Object.values(grado).forEach(curso => {
-                        if (Array.isArray(curso)) {
-                            curso.forEach(asignatura => {
-                                if (asignatura.arloa && asignatura.arloa.trim() !== '') {
-                                    eremuak.add(asignatura.arloa.trim());
-                                }
-                                // También buscar en campo 'eremua' por compatibilidad
-                                if (asignatura.eremua && asignatura.eremua.trim() !== '') {
-                                    eremuak.add(asignatura.eremua.trim());
-                                }
-                            });
-                        }
-                    });
-                });
-                
-                const listaEremuak = Array.from(eremuak).sort();
-                console.log(`📊 Eremuak aurkituak: ${listaEremuak.length}`);
-                console.log(listaEremuak);
-                
-                return listaEremuak;
-            }
-            // 🔥 LLENAR SELECT DE EREMUAK CON OPCIÓN "AÑADIR NUEVO"
-            function llenarSelectEremuakConEditor() {
-                const select = document.getElementById('subjectArea');
-                if (!select) {
-                    console.error('❌ subjectArea select-a ez dago');
-                    return;
-                }
-                
-                // 1. Extraer eremuak existentes
-                const eremuakExistentes = extraerEremuakDelCurriculum();
-                
-                // 2. Guardar valor actual antes de limpiar
-                const valorActual = select.value;
-                
-                // 3. Limpiar y llenar select
-                select.innerHTML = '';
-                
-                // Opción por defecto
-                const optionDefault = document.createElement('option');
-                optionDefault.value = '';
-                optionDefault.textContent = '-- Aukeratu Arloa --';
-                select.appendChild(optionDefault);
-                
-                // Eremuak existentes
-                eremuakExistentes.forEach(eremua => {
-                    const option = document.createElement('option');
-                    option.value = eremua;
-                    option.textContent = eremua;
-                    select.appendChild(option);
-                });
-                
-                // 🔥 OPCIÓN PARA AÑADIR NUEVO EREMUA
-                const optionNuevo = document.createElement('option');
-                optionNuevo.value = '__nuevo__';
-                optionNuevo.textContent = '➕ Gehitu eremu berria...';
-                optionNuevo.style.color = '#4F46E5';
-                optionNuevo.style.fontWeight = 'bold';
-                select.appendChild(optionNuevo);
-                
-                // Restaurar valor anterior si existe
-                if (valorActual && eremuakExistentes.includes(valorActual)) {
-                    select.value = valorActual;
-                }
-                
-                console.log(`✅ Select beteta: ${eremuakExistentes.length} eremu + "Gehitu berria"`);
-                
-                // 4. Event listener especial con detección de "Añadir nuevo"
-                select.addEventListener('change', function() {
-                    if (this.value === '__nuevo__') {
-                        // 🔥 MOSTRAR PROMPT PARA NUEVO EREMUA
-                        const nuevoEremua = prompt('Sartu eremu berriaren izena:', '');
-                        
-                        if (nuevoEremua && nuevoEremua.trim() !== '') {
-                            const eremuaLimpio = nuevoEremua.trim();
-                            
-                            // Añadir al select inmediatamente
-                            const nuevaOption = document.createElement('option');
-                            nuevaOption.value = eremuaLimpio;
-                            nuevaOption.textContent = eremuaLimpio;
-                            
-                            // Insertar antes de la opción "Añadir nuevo"
-                            select.insertBefore(nuevaOption, optionNuevo);
-                            
-                            // Seleccionar el nuevo
-                            select.value = eremuaLimpio;
-                            
-                            // Guardar en asignatura actual
-                            const subject = window.getSelectedSubject();
-                            if (subject) {
-                                subject.arloa = eremuaLimpio;
-                                window.showToast(`✅ Eremu berria gehitu da: ${eremuaLimpio}`, 'success');
-                                window.saveCurriculumData();
-                                
-                                // Actualizar UI
-                                setTimeout(() => {
-                                    llenarSelectEremuakConEditor(); // Actualizar lista
-                                }, 500);
-                            }
-                        } else {
-                            // Cancelar - volver a valor anterior
-                            select.value = '';
-                        }
-                    } else if (this.value !== '') {
-                        // Cambio normal de eremua existente
-                        const subject = window.getSelectedSubject();
-                        if (subject) {
-                            subject.arloa = this.value;
-                            window.showToast(`✅ Eremua eguneratuta: ${this.value}`, 'success');
-                            window.saveCurriculumData();
-                        }
-                    }
-                });
-            }
-            // 🔥 PANEL PARA GESTIONAR TODOS LOS EREMUAK (solo admin)
-            function mostrarEditorEremuak() {
-                // Verificar si es admin
-                supabase.auth.getUser().then(({data: { user }}) => {
-                    if (!user || !ADMIN_EMAILS.includes(user.email)) {
-                        window.showToast('❌ Baimenik ez eremuak kudeatzeko', 'error');
-                        return;
-                    }
-                    
-                    const eremuakExistentes = extraerEremuakDelCurriculum();
-                    
-                    // Crear modal de edición
-                    const modalHTML = `
-                    <div id="eremuakModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-                            <div class="flex justify-between items-center mb-6">
-                                <h2 class="text-2xl font-bold text-gray-800">
-                                    <i class="fas fa-palette text-purple-600 mr-2"></i>Eremuak Kudeatu
-                                </h2>
-                                <button onclick="document.getElementById('eremuakModal').remove()" 
-                                        class="text-gray-500 hover:text-gray-700 text-2xl">
-                                    &times;
-                                </button>
-                            </div>
-                            
-                            <div class="mb-6">
-                                <h3 class="font-bold text-lg text-gray-700 mb-3">Eremu existenteak (${eremuakExistentes.length})</h3>
-                                <div id="listaEremuak" class="space-y-2 mb-4">
-                                    ${eremuakExistentes.map((eremua, i) => `
-                                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                                            <span class="font-medium">${eremua}</span>
-                                            <div class="flex items-center gap-2">
-                                                <button onclick="renombrarEremua('${eremua}')" 
-                                                        class="text-blue-500 hover:text-blue-700 p-1"
-                                                        title="Berrizendatu">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button onclick="eliminarEremua('${eremua}')" 
-                                                        class="text-red-500 hover:text-red-700 p-1"
-                                                        title="Ezabatu">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <div class="border-t pt-4">
-                                <h3 class="font-bold text-lg text-green-700 mb-3">Eremu berria gehitu</h3>
-                                <div class="flex gap-2">
-                                    <input type="text" id="nuevoEremuaInput" 
-                                           placeholder="Eremu berriaren izena" 
-                                           class="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                                    <button onclick="gehituEremuaBerria()" 
-                                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-                                        Gehitu
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-6 text-center text-sm text-gray-500">
-                                <p><i class="fas fa-info-circle mr-1"></i>Eremuak automatikoki ateratzen dira asignatura guztietatik</p>
-                            </div>
-                        </div>
-                    </div>
-                    `;
-                    
-                    document.body.insertAdjacentHTML('beforeend', modalHTML);
-                });
-            }
-            
-            // 🔥 FUNCIONES AUXILIARES PARA EDITAR EREMUAK
-            function renombrarEremua(eremuaViejo) {
-                const nuevoNombre = prompt(`Berrizendatu "${eremuaViejo}":`, eremuaViejo);
-                
-                if (nuevoNombre && nuevoNombre.trim() !== '' && nuevoNombre !== eremuaViejo) {
-                    // Actualizar en TODAS las asignaturas
-                    Object.values(window.curriculumData).forEach(grado => {
-                        if (typeof grado === 'object' && !Array.isArray(grado)) {
-                            Object.values(grado).forEach(curso => {
-                                if (Array.isArray(curso)) {
-                                    curso.forEach(asignatura => {
-                                        if (asignatura.arloa === eremuaViejo) {
-                                            asignatura.arloa = nuevoNombre.trim();
-                                        }
-                                        if (asignatura.eremua === eremuaViejo) {
-                                            asignatura.eremua = nuevoNombre.trim();
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    });
-                    
-                    window.showToast(`✅ Eremua berrizendatua: ${eremuaViejo} → ${nuevoNombre}`, 'success');
-                    window.saveCurriculumData();
-                    
-                    // Actualizar UI
-                    setTimeout(() => {
-                        document.getElementById('eremuakModal')?.remove();
-                        mostrarEditorEremuak();
-                        llenarSelectEremuakConEditor();
-                    }, 500);
-                }
-            }
-            
-            function eliminarEremua(eremua) {
-                if (confirm(`Ziur zaude "${eremua}" ezabatu nahi duzula?\n\nAsignatura guztiak "undefined" geratuko dira eremu honetan.`)) {
-                    // Poner null en lugar de eliminar
-                    Object.values(window.curriculumData).forEach(grado => {
-                        if (typeof grado === 'object' && !Array.isArray(grado)) {
-                            Object.values(grado).forEach(curso => {
-                                if (Array.isArray(curso)) {
-                                    curso.forEach(asignatura => {
-                                        if (asignatura.arloa === eremua) {
-                                            asignatura.arloa = null;
-                                        }
-                                        if (asignatura.eremua === eremua) {
-                                            asignatura.eremua = null;
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    });
-                    
-                    window.showToast(`🗑️ Eremua ezabatua: ${eremua}`, 'success');
-                    window.saveCurriculumData();
-                    
-                    setTimeout(() => {
-                        document.getElementById('eremuakModal')?.remove();
-                        mostrarEditorEremuak();
-                        llenarSelectEremuakConEditor();
-                    }, 500);
-                }
-            }
-            
-            function gehituEremuaBerria() {
-                const input = document.getElementById('nuevoEremuaInput');
-                if (!input || !input.value.trim()) {
-                    window.showToast('❌ Sartu eremuaren izena', 'error');
-                    return;
-                }
-                
-                const nuevoEremua = input.value.trim();
-                
-                // Verificar que no existe ya
-                const eremuakExistentes = extraerEremuakDelCurriculum();
-                if (eremuakExistentes.includes(nuevoEremua)) {
-                    window.showToast('❌ Eremua jada existitzen da', 'error');
-                    return;
-                }
-                
-                // Añadir al select global
-                llenarSelectEremuakConEditor();
-                
-                window.showToast(`✅ Eremu berria gehitu da: ${nuevoEremua}`, 'success');
-                input.value = '';
-                
-                // Cerrar y reabrir modal para mostrar actualizado
-                setTimeout(() => {
-                    document.getElementById('eremuakModal')?.remove();
-                    mostrarEditorEremuak();
-                }, 300);
-            }
 }
+
 
