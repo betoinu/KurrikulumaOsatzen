@@ -628,32 +628,59 @@ supabase.auth.onAuthStateChange(async (event, session) => {
         
         // 🔥 GEHITU HAU - Reset UI funtzioa
         function resetUIForLoggedOut() {
-            // UI elementuak reset
-            document.getElementById('signInBtn').classList.remove('hidden');
-            document.getElementById('signOutBtn').classList.add('hidden');
-            document.getElementById('userInfo').classList.add('hidden');
-            document.getElementById('appButtons').classList.add('hidden');
-            document.getElementById('noDataMessage').classList.remove('hidden');
-            document.getElementById('navigationPanel').classList.add('hidden');
-            document.getElementById('welcomeEditor').classList.remove('hidden');
-            document.getElementById('editorPanel').classList.add('hidden');
+            console.log('🔄 UI reset saioa itxita...');
             
-            // Reset selectores
-            document.getElementById('degreeSelect').innerHTML = '<option value="">-- Aukeratu Gradua --</option>';
-            document.getElementById('yearButtons').innerHTML = '';
-            document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu irakasgaiak ikusteko...</li>';
+            // 🔥 BILATU ELEMENTU GUZTIAK ALDI BATEAN
+            const elements = {
+                signInBtn: document.getElementById('signInBtn'),
+                signOutBtn: document.getElementById('signOutBtn'),
+                userInfo: document.getElementById('userInfo'),
+                appButtons: document.getElementById('appButtons'),
+                noDataMessage: document.getElementById('noDataMessage'),
+                navigationPanel: document.getElementById('navigationPanel'),
+                welcomeEditor: document.getElementById('welcomeEditor'),
+                editorPanel: document.getElementById('editorPanel'),
+                degreeSelect: document.getElementById('degreeSelect'),
+                sectionButtons: document.getElementById('sectionButtons'),
+                subjectList: document.getElementById('subjectList'),
+                loadingOverlay: document.getElementById('loadingOverlay')
+            };
             
-            // Erakutsi login botoia nabarmen
-            document.getElementById('noDataMessage').innerHTML = `
-                <div class="text-center py-8">
-                    <i class="fas fa-door-open text-4xl text-indigo-500 mb-3"></i>
-                    <p class="mb-4 text-gray-700">Saioa itxita. Curriculum datuak ikusteko, berriro hasi saioa.</p>
-                    <button onclick="signInWithGoogle()" 
-                            class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-medium">
-                        <i class="fab fa-google mr-2"></i>Hasi Saioa Google-rekin
-                    </button>
-                </div>
-            `;
+            // 🔥 A. SAIOA ITXITA - ELEMENTUAK EGUNERATU
+            // 1. Erakutsi/hizkutu klaseak
+            const showElements = ['signInBtn', 'noDataMessage', 'welcomeEditor'];
+            const hideElements = ['signOutBtn', 'userInfo', 'appButtons', 'navigationPanel', 'editorPanel', 'loadingOverlay'];
+            
+            showElements.forEach(id => {
+                if (elements[id]) elements[id].classList.remove('hidden');
+            });
+            
+            hideElements.forEach(id => {
+                if (elements[id]) elements[id].classList.add('hidden');
+            });
+            
+            // 🔥 B. SELECTOREAK GARBIATU
+            // 2. Dropdown eta listak reset
+            if (elements.degreeSelect) {
+                elements.degreeSelect.innerHTML = '<option value="">-- Aukeratu Gradua --</option>';
+            }
+            
+            if (elements.sectionButtons) {
+                elements.sectionButtons.innerHTML = '';
+            }
+            
+            if (elements.subjectList) {
+                elements.subjectList.innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu irakasgaiak ikusteko...</li>';
+            }
+            
+            // 🔥 C. TOAST MEZUA (aukerakoa)
+            setTimeout(() => {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('✅ Saioa ondo itxita. Berriro hasi saioa ahal izateko.', 'success');
+                }
+            }, 500);
+            
+            console.log('✅ UI reset saioa itxita');
         }
         
         async function viewEditHistory() {
@@ -1125,7 +1152,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
         }
 
         window.renderYears = function() {
-            const container = document.getElementById('yearButtons');
+            const container = document.getElementById('sectionButtons');
             container.innerHTML = '';
             if (!window.selectedDegree || !window.curriculumData[window.selectedDegree]) return;
             const years = Object.keys(window.curriculumData[window.selectedDegree]).sort();
@@ -1374,6 +1401,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     </script>
 </body>
 </html>
+
 
 
 
