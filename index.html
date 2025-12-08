@@ -180,8 +180,8 @@
     }
     
     // 🔥 Función placeholder para evitar errores
-    window.updateUI = async function() {
-        console.log('⚠️ updateUI llamado pero aún no definida completamente');
+    window.updateUI = window.setUILoginState || function() {
+        console.log('⚠️ updateUI deprecated - use setUILoginState instead');
     };
     </script>
     <script src="config.js"></script>
@@ -929,30 +929,38 @@ window.setupEventListeners = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const hasLogoutParam = urlParams.has('logout');
             const hasTimestamp = urlParams.has('_');
-            
-            if (hasLogoutParam) {
-                console.log('🔍 Logout parametroa detektatuta URL-an');
-                
-                // 1️⃣ Garbitu URL-a (ez erakutsi logout parametroa)
-                const cleanUrl = window.location.origin + window.location.pathname;
-                window.history.replaceState({}, document.title, cleanUrl);
-                
-                // 2️⃣ Resetear UI completamente
-                resetUIForLoggedOut();
-                
-                // 3️⃣ Erakutsi mezua
-                window.showToast('✅ Saioa ondo itxita. Berriro hasi saioa ahal izateko.', 'success');
-                
-                // 4️⃣ Egin Supabase sign-out berriro (segurtasunerako)
-                setTimeout(() => {
-                    supabase.auth.signOut().catch(() => {});
-                }, 100);
-                
-                return true;
+            // 1. Garbitu URL-a
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+
+            if (typeof window.setUILoginState === 'function') {
+                window.setUILoginState(false);
+            } else {
+                console.warn('⚠️ setUILoginState not available');
+                // Fallback sinplea
+                document.getElementById('signInBtn')?.classList.remove('hidden');
+                document.getElementById('signOutBtn')?.classList.add('hidden');
+                document.getElementById('loadingOverlay')?.classList.add('hidden');
             }
             
-            return false;
+            // 3. Supabase sign-out (segurtasunerako)
+            setTimeout(() => {
+                window.supabase?.auth?.signOut().catch(() => {});
+            }, 100);
+            
+            // 4. Toast mezu bat (aukerakoa)
+            if (typeof window.showToast === 'function') {
+                setTimeout(() => {
+                    window.showToast('✅ Saioa ondo itxita', 'success');
+                }, 500);
+            }
+            
+            return true;
         }
+        
+        return false;
+    }                
+
                
         async function viewEditHistory() {
             const user = await checkAuth();
@@ -1178,12 +1186,6 @@ window.setupEventListeners = function() {
             
             if (accessToken) {
                 console.log('✅ Token-a aurkitu da URL-an - saioa hasita');
-                
-                // Token-a automatikoki prozesatuko da Supabase-k
-                // Eguneratu UI-a
-                setTimeout(() => {
-                    window.updateUI();
-                }, 1000);
             }
         }
          
@@ -1617,33 +1619,43 @@ window.setupEventListeners = function() {
         window.supabaseIkusiDatuak = viewSupabaseData;
         window.supabaseGehituDatuak = saveCurriculumData;
 
-        // Event listenerrak gehitu
-                // Event listenerrak gehitu
+        // ALDATU DOMContentLoaded:
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 DOM Kargatuta - Hasieraketa sinplea');
+            console.log('🚀 DOM Kargatuta - Bukle gabeko hasiera');
             
-            // 1. Karga adierazlea ezkutatu (edozertarako)
+            // 1. Lehenengo eta behin: loading overlay EZKUTATU
             const loading = document.getElementById('loadingOverlay');
-            if (loading) loading.classList.add('hidden');
+            if (loading) {
+                loading.classList.add('hidden');
+                loading.style.display = 'none';
+                console.log('📦 Loading overlay ezkutatuta');
+            }
             
-            // 2. Event listeners
+            // 2. Logout parametroak kudeatu (UPDATE EGINDUA)
+            handleLogoutFromUrl(); // Orain setUILoginState() erabiliko du
+            
+            // 3. ❌ KENDU HAU: setTimeout updateUI
+            // ✅ ORDEZKATU HONEGAZ:
+            // Supabase-k auth egoera berez kudeatuko du
+            
+            // 4. Event listeners
             if (typeof setupEventListeners === 'function') {
                 setupEventListeners();
             }
             
-            // 3. Supabase-k kudeatuko du auth
-            console.log('⏳ Supabase-k autentifikazioa kudeatuko du...');
-            
-            // 4. WebSocket (geroago)
+            // 5. WebSocket (geroago)
             setTimeout(() => {
                 if (typeof setupRealtimeUpdates === 'function') {
                     setupRealtimeUpdates();
                 }
             }, 3000);
-});
+            
+            console.log('✅ App ready - Buklerik gabe');
+        });
     </script>
 </body>
 </html>
+
 
 
 
