@@ -1750,8 +1750,7 @@ window.setupEventListeners = function() {
                 }
             }, 2000);
         }); 
-    </script>
-        <script>
+
     // 🛡️ BLOQUEADOR TAC/ADS - VERSIÓN SUPER AGRESIVA
     (function() {
         'use strict';
@@ -1979,8 +1978,7 @@ window.setupEventListeners = function() {
         
         console.log('✅ BLOQUEADOR TAC AGGRESIVO ACTIVADO');
     })();
-    </script>
-        <script>
+
         // 🔥 DESREGISTRAR SERVICE WORKERS AL CARGAR
         (function() {
             if ('serviceWorker' in navigator) {
@@ -2394,3 +2392,4 @@ window.setupEventListeners = function() {
                     mostrarEditorEremuak();
                 }, 300);
             }
+
