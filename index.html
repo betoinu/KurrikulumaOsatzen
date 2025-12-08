@@ -111,6 +111,12 @@
                             class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded flex items-center text-sm btn">
                         <i class="fas fa-th-large mr-2"></i> Matrices ANECA
                     </button>
+
+                    <!-- 🔥 BOTÓN panel administrador -->
+                    <button id="adminPanelBtn" onclick="mostrarPanelAdmin()" 
+                            class="bg-gray-700 hover:bg-gray-800 px-3 py-1.5 rounded flex items-center text-sm btn hidden">
+                        <i class="fas fa-cogs mr-2"></i> Administrazioa
+                    </button>
                     
                     <!-- SUPABASE BOTOIAK (guztientzat) -->
                     <button onclick="viewSupabaseData()" class="bg-indigo-600 hover:bg-indigo-800 px-3 py-1.5 rounded flex items-center text-sm btn">
@@ -157,17 +163,17 @@
 
             <div id="navigationPanel" class="hidden space-y-4">
            
-            <!-- 🔥 1. BOTÓN COMPETENCIAS INGRESO (ANTES del 1º curso) -->
-            <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 class="font-bold text-blue-700 mb-2">
-                    <i class="fas fa-sign-in-alt mr-2"></i>Competencias de Ingreso
-                </h3>
-                <p class="text-sm text-gray-600 mb-3">Competencias que los estudiantes deben tener al ingresar</p>
-                <button onclick="loadCompetencias('ingreso')" 
-                        class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center justify-center btn">
-                    <i class="fas fa-book-open mr-2"></i>Ver Competencias Ingreso
-                </button>
-            </div>
+                <!-- 🔥 BOTÓN COMPETENCIAS INGRESO (ANTES de todo) -->
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 class="font-bold text-blue-700 mb-2 flex items-center">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Sarrerako Kompetentziak
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-3">Ikasleek sartzerakoan izan behar dituzten gaitasunak</p>
+                    <button onclick="showCompetenciasGlobales('ingreso')" 
+                            class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center justify-center btn">
+                        <i class="fas fa-edit mr-2"></i>Editatu Sarrerako Kompetentziak
+                    </button>
+                </div>
                 
                 <!-- Gradua Hautatu -->
                 <div>
@@ -193,18 +199,18 @@
                     </ul>
                 </div>
 
-                 <!-- 🔥 5. BOTÓN COMPETENCIAS EGRESO (DESPUÉS del 4º curso) -->
+                <!-- 🔥 BOTÓN COMPETENCIAS EGRESO (DESPUÉS de todo) -->
                     <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <h3 class="font-bold text-green-700 mb-2">
-                            <i class="fas fa-sign-out-alt mr-2"></i>Competencias de Egreso
+                        <h3 class="font-bold text-green-700 mb-2 flex items-center">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Irteerako Kompetentziak
                         </h3>
-                        <p class="text-sm text-gray-600 mb-3">Competencias que los estudiantes deben alcanzar al graduarse</p>
-                        <button onclick="loadCompetencias('egreso')" 
+                        <p class="text-sm text-gray-600 mb-3">Ikasleek graduatu aurretik lortu behar dituzten gaitasunak</p>
+                        <button onclick="showCompetenciasGlobales('egreso')" 
                                 class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center justify-center btn">
-                            <i class="fas fa-graduation-cap mr-2"></i>Ver Competencias Egreso
+                            <i class="fas fa-edit mr-2"></i>Editatu Irteerako Kompetentziak
                         </button>
                     </div>
-        </aside>
+                </aside>
 
         <!-- Eskuineko Zutabea: Editorea -->
         <section class="w-full md:w-2/3 bg-white p-6 rounded-lg shadow-md min-h-[500px]">
@@ -226,15 +232,33 @@
                     <h3 class="font-bold text-gray-700 mb-3"><i class="fas fa-info-circle text-indigo-600 mr-2"></i>Datu Ofizialak Editatu</h3>
                     
                     <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        
                         <!-- Arloa/Eremua -->
                         <div>
                             <label class="block text-sm text-gray-600 mb-1">Arloa / Eremua</label>
-                            <input type="text" id="subjectArea" class="w-full border p-2 rounded focus:outline-none focus:border-indigo-500">
+                            <select id="subjectArea" class="w-full border p-2 rounded focus:outline-none focus:border-indigo-500"
+                                    {{#unless esAdmin}}disabled{{/unless}}>
+                                <option value="">-- Aukeratu Arloa --</option>
+                                <!-- Se llenará dinámicamente -->
+                            </select>
                         </div>
                         <!-- Irakasgaiaren Izena (editagarria) -->
                         <div>
                             <label class="block text-sm text-gray-600 mb-1">Irakasgaiaren Izena</label>
                             <input type="text" id="subjectNameEdit" class="w-full border p-2 rounded focus:outline-none focus:border-indigo-500">
+                        </div>
+
+                        <!-- 🔥 NUEVO: Editor de Créditos -->
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">Kredituak</label>
+                            <div class="flex items-center">
+                                <input type="number" id="subjectCreditsEdit" min="1" max="30" step="0.5"
+                                       class="w-full border p-2 rounded-l focus:outline-none focus:border-indigo-500"
+                                       placeholder="Ej: 6">
+                                <span class="bg-gray-100 border border-l-0 border-gray-300 px-3 py-2 rounded-r text-gray-600">
+                                    ECTS
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -964,6 +988,310 @@ window.setupEventListeners = function() {
             }
         }
 
+        // 🔥 FUNCIÓN ÚNICA PARA AMBOS TIPOS (independiente del grado)
+        window.showCompetenciasGlobales = async function(tipo) {
+            console.log(`📚 Mostrando competencias ${tipo} (globales)`);
+            
+            // Mostrar editor
+            document.getElementById('welcomeEditor').classList.add('hidden');
+            document.getElementById('editorPanel').classList.remove('hidden');
+            
+            // Configurar título
+            const esIngreso = tipo === 'ingreso';
+            document.getElementById('subjectTitle').textContent = 
+                esIngreso ? 'Sarrerako Kompetentziak' : 'Irteerako Kompetentziak';
+            
+            document.getElementById('subjectType').textContent = 'Kompetentziak Globalak';
+            document.getElementById('subjectCredits').textContent = '';
+            
+            // Ocultar campos de asignatura (no aplican)
+            document.getElementById('subjectNameEdit').value = '';
+            document.getElementById('subjectArea').value = '';
+            document.getElementById('subjectRAs').value = '';
+            
+            // Deshabilitar unidad didáctica
+            document.getElementById('unitName').disabled = true;
+            document.getElementById('unitContent').disabled = true;
+            document.getElementById('addUnitBtn').disabled = true;
+            
+            // Asegurar estructura en curriculumData
+            const competenciasKey = esIngreso ? 'kompetentziak_ingreso' : 'kompetentziak_egreso';
+            
+            if (!window.curriculumData[competenciasKey]) {
+                window.curriculumData[competenciasKey] = [];
+                console.log(`✅ Estructura creada: ${competenciasKey}`);
+            }
+            
+            const competencias = window.curriculumData[competenciasKey];
+            
+            // Renderizar lista
+            renderizarCompetencias(competencias, competenciasKey);
+        };
+        
+        // 🔥 RENDERIZAR LISTA DE COMPETENCIAS
+        function renderizarCompetencias(competencias, competenciasKey) {
+            let html = `
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold mb-4 text-gray-800">
+                        ${competenciasKey === 'kompetentziak_ingreso' ? '🎯 Sarrerako Kompetentziak' : '🎓 Irteerako Kompetentziak'}
+                    </h3>
+                    <p class="text-gray-600 mb-6">
+                        ${competenciasKey === 'kompetentziak_ingreso' 
+                            ? 'Ikasleek sartzerakoan izan behar dituzten gaitasunak' 
+                            : 'Ikasleek graduatu aurretik lortu behar dituzten gaitasunak'}
+                    </p>
+                    
+                    <div id="competencias-list" class="space-y-4">
+            `;
+            
+            if (competencias.length === 0) {
+                html += `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-list-alt text-4xl mb-3"></i>
+                        <p>Ez dago kompetentziarik definitua.</p>
+                        <p class="text-sm mt-1">Gehitu lehen kompetentzia "Gehitu Kompetentzia" botoiarekin.</p>
+                    </div>
+                `;
+            } else {
+                competencias.forEach((comp, index) => {
+                    html += `
+                        <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 
+                            ${competenciasKey === 'kompetentziak_ingreso' ? 'bg-blue-50' : 'bg-green-50'}">
+                            <div class="flex items-start gap-3">
+                                <!-- Número -->
+                                <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
+                                    ${competenciasKey === 'kompetentziak_ingreso' 
+                                        ? 'bg-blue-100 text-blue-700' 
+                                        : 'bg-green-100 text-green-700'}">
+                                    ${index + 1}
+                                </div>
+                                
+                                <!-- Contenido -->
+                                <div class="flex-grow">
+                                    <!-- Código -->
+                                    <div class="mb-2">
+                                        <label class="text-xs text-gray-500 mb-1 block">Kodea</label>
+                                        <input type="text" 
+                                               value="${comp.kodea || `C${index + 1}`}" 
+                                               onchange="updateCompetenciaGlobal('${competenciasKey}', ${index}, 'kodea', this.value)"
+                                               class="w-32 border border-gray-300 rounded px-3 py-2 text-sm font-semibold
+                                                   ${competenciasKey === 'kompetentziak_ingreso' 
+                                                       ? 'focus:border-blue-500 focus:ring-blue-500' 
+                                                       : 'focus:border-green-500 focus:ring-green-500'}">
+                                    </div>
+                                    
+                                    <!-- Descripción -->
+                                    <div>
+                                        <label class="text-xs text-gray-500 mb-1 block">Deskribapena</label>
+                                        <textarea 
+                                            onchange="updateCompetenciaGlobal('${competenciasKey}', ${index}, 'deskribapena', this.value)"
+                                            class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 
+                                                ${competenciasKey === 'kompetentziak_ingreso' 
+                                                    ? 'focus:border-blue-500 focus:ring-blue-500' 
+                                                    : 'focus:border-green-500 focus:ring-green-500'}"
+                                            rows="3">${comp.deskribapena || ''}</textarea>
+                                    </div>
+                                </div>
+                                
+                                <!-- Botón eliminar -->
+                                <button onclick="deleteCompetenciaGlobal('${competenciasKey}', ${index})" 
+                                        class="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                                        title="Ezabatu">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `
+                    </div>
+                    
+                    <!-- Botón añadir -->
+                    <div class="mt-6 pt-4 border-t border-gray-200">
+                        <button onclick="addCompetenciaGlobal('${competenciasKey}')" 
+                                class="w-full ${competenciasKey === 'kompetentziak_ingreso' 
+                                    ? 'bg-blue-600 hover:bg-blue-700' 
+                                    : 'bg-green-600 hover:bg-green-700'} 
+                                    text-white px-6 py-3 rounded-lg font-medium flex items-center justify-center">
+                            <i class="fas fa-plus mr-2"></i>Gehitu Kompetentzia Berria
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Mostrar en el contenedor
+            document.getElementById('unitsContainer').innerHTML = html;
+            document.getElementById('noUnitsMessage').classList.add('hidden');
+        }
+        
+        // 🔥 ACTUALIZAR COMPETENCIA GLOBAL
+        window.updateCompetenciaGlobal = function(competenciasKey, index, campo, valor) {
+            if (!window.curriculumData[competenciasKey]) return;
+            
+            if (!window.curriculumData[competenciasKey][index]) {
+                window.curriculumData[competenciasKey][index] = {};
+            }
+            
+            window.curriculumData[competenciasKey][index][campo] = valor;
+            
+            // Guardar automáticamente
+            setTimeout(() => {
+                window.saveCurriculumData();
+                window.showToast('✅ Kompetentzia eguneratua', 'success');
+            }, 500);
+        };
+        
+        // 🔥 AÑADIR COMPETENCIA GLOBAL
+        window.addCompetenciaGlobal = function(competenciasKey) {
+            if (!window.curriculumData[competenciasKey]) {
+                window.curriculumData[competenciasKey] = [];
+            }
+            
+            const numero = window.curriculumData[competenciasKey].length + 1;
+            const esIngreso = competenciasKey === 'kompetentziak_ingreso';
+            
+            window.curriculumData[competenciasKey].push({
+                kodea: esIngreso ? `SI${numero}` : `SE${numero}`, // SI = Sarrerako, SE = Sarrerako Egreso
+                deskribapena: 'Deskribatu kompetentzia hau...',
+                data_sartze: new Date().toISOString().slice(0, 10),
+                egilea: window.currentUser?.email || 'admin'
+            });
+            
+            // Volver a renderizar
+            renderizarCompetencias(window.curriculumData[competenciasKey], competenciasKey);
+            window.saveCurriculumData();
+            window.showToast('✅ Kompetentzia berria gehitu da', 'success');
+        };
+        
+        // 🔥 ELIMINAR COMPETENCIA GLOBAL
+        window.deleteCompetenciaGlobal = function(competenciasKey, index) {
+            if (!window.curriculumData[competenciasKey]) return;
+            
+            if (confirm('Ziur zaude kompetentzia ezabatu nahi duzula?\n\nEkintza hau ezin da desegin.')) {
+                window.curriculumData[competenciasKey].splice(index, 1);
+                
+                // Volver a renderizar
+                renderizarCompetencias(window.curriculumData[competenciasKey], competenciasKey);
+                window.saveCurriculumData();
+                window.showToast('🗑️ Kompetentzia ezabatua', 'success');
+            }
+        };
+
+        // 🔥 NORMALIZAR Y MIGRAR ESTRUCTURA JSON
+        window.normalizeData = function(data) {
+            console.log('🔄 Normalizando estructura de datos...');
+            
+            // 1. Verificar si es estructura vieja
+            const esEstructuraVieja = !data.kompetentziak_ingreso && !data.kompetentziak_egreso;
+            
+            if (esEstructuraVieja) {
+                console.log('📦 JSON viejo detectado - Migrando a nueva estructura...');
+                data = migrarEstructuraVieja(data);
+            }
+            
+            // 2. Asegurar estructura de competencias
+            if (!data.kompetentziak_ingreso) {
+                data.kompetentziak_ingreso = [];
+                console.log('✅ Estructura kompetentziak_ingreso creada');
+            }
+            
+            if (!data.kompetentziak_egreso) {
+                data.kompetentziak_egreso = [];
+                console.log('✅ Estructura kompetentziak_egreso creada');
+            }
+            
+            // 3. Normalizar grados y asignaturas (código existente)
+            for (const grado in data) {
+                // Saltar competencias (no son grados)
+                if (grado === 'kompetentziak_ingreso' || grado === 'kompetentziak_egreso') {
+                    continue;
+                }
+                
+                for (const curso in data[grado]) {
+                    if (Array.isArray(data[grado][curso])) {
+                        data[grado][curso].forEach((subject, subjectIndex) => {
+                            // Normalizar unitateak
+                            if (!Array.isArray(subject.unitateak)) {
+                                if (typeof subject.unitateak === 'string') {
+                                    try {
+                                        const parsedUnits = JSON.parse(subject.unitateak);
+                                        subject.unitateak = Array.isArray(parsedUnits) ? parsedUnits : [];
+                                    } catch (e) {
+                                        subject.unitateak = [];
+                                    }
+                                } else {
+                                    subject.unitateak = [];
+                                }
+                            }
+                            
+                            // Asegurar RAs
+                            if (!Array.isArray(subject.currentOfficialRAs)) {
+                                subject.currentOfficialRAs = [];
+                            }
+                            
+                            // Asegurar créditos
+                            if (typeof subject.kredituak !== 'number') {
+                                subject.kredituak = subject.kredituak ? parseFloat(subject.kredituak) : 6;
+                            }
+                        });
+                    }
+                }
+            }
+            
+            console.log('✅ Normalización completada');
+            return data;
+        };
+        
+        // 🔥 MIGRAR ESTRUCTURA VIEJA A NUEVA
+        function migrarEstructuraVieja(dataViejo) {
+            console.log('🔄 Migrando estructura vieja...');
+            
+            const dataNuevo = {};
+            let competenciasEncontradas = false;
+            
+            // 1. Separar grados de competencias
+            for (const key in dataViejo) {
+                // Si es un grado (contiene cursos 1-4)
+                if (typeof dataViejo[key] === 'object' && 
+                    (dataViejo[key]['1. Maila'] || dataViejo[key]['1. curso'])) {
+                    
+                    dataNuevo[key] = dataViejo[key];
+                    console.log(`✅ Grado migrado: ${key}`);
+                    
+                } 
+                // Si son competencias en estructura vieja (dentro de grado)
+                else if (key === 'kompetentziak_ingreso' || key === 'kompetentziak_egreso') {
+                    competenciasEncontradas = true;
+                    dataNuevo[key] = dataViejo[key];
+                    console.log(`✅ Competencias migradas: ${key}`);
+                }
+                // Buscar competencias dentro de grados (estructura incorrecta vieja)
+                else if (typeof dataViejo[key] === 'object') {
+                    for (const subKey in dataViejo[key]) {
+                        if (subKey === 'kompetentziak_ingreso' || subKey === 'kompetentziak_egreso') {
+                            competenciasEncontradas = true;
+                            dataNuevo[subKey] = dataViejo[key][subKey];
+                            console.log(`✅ Competencias extraídas de ${key}: ${subKey}`);
+                            
+                            // Eliminar del grado
+                            delete dataViejo[key][subKey];
+                        }
+                    }
+                }
+            }
+            
+            // 2. Si no se encontraron competencias, crear estructuras vacías
+            if (!competenciasEncontradas) {
+                dataNuevo.kompetentziak_ingreso = [];
+                dataNuevo.kompetentziak_egreso = [];
+                console.log('✅ Estructuras de competencias creadas (vacías)');
+            }
+            
+            return dataNuevo;
+        }
+  
         // 🔥 FUNCIÓN PARA MOSTRAR LAS 4 MATRICES ANECA
         window.mostrarMatricesANECA = function() {
             console.log('📊 Mostrando matrices ANECA');
@@ -1072,6 +1400,38 @@ window.setupEventListeners = function() {
             }
         };
 
+        // 🔥 FUNCIÓN PARA ACTUALIZAR CRÉDITOS
+        window.actualizarCreditos = function() {
+            const creditosInput = document.getElementById('subjectCreditsEdit');
+            const creditos = parseFloat(creditosInput.value);
+            
+            if (isNaN(creditos) || creditos < 0) {
+                window.showToast('❌ Kreditu baliogabea', 'error');
+                return;
+            }
+            
+            const subject = window.getSelectedSubject();
+            if (subject) {
+                subject.kredituak = creditos;
+                
+                // Actualizar visualización
+                document.getElementById('subjectCredits').textContent = `Kredituak: ${creditos}`;
+                
+                window.showToast(`✅ Kredituak eguneratuta: ${creditos} ECTS`, 'success');
+                window.saveCurriculumData();
+            }
+        };
+        
+        // En loadSubjectEditor, añade:
+        window.loadSubjectEditor = function(index) {
+            // ... código existente ...
+            
+            // 🔥 Añadir valor de créditos al input
+            document.getElementById('subjectCreditsEdit').value = subject.kredituak || '';
+            
+            // 🔥 Añadir event listener para créditos
+            document.getElementById('subjectCreditsEdit').addEventListener('change', window.actualizarCreditos);
+        };
         
         // Datuak normalizatzeko funtzioa
         window.normalizeData = function(data) {
@@ -1110,15 +1470,28 @@ window.setupEventListeners = function() {
         // --- JSON fitxategia tokiko datuetatik kargatzeko funtzioa ---
         window.loadLocalJsonData = async function(isInitialLoad = false) {
             try {
-                // JSON lokala kargatu fetch bidez
+                console.log('📂 JSON lokaletik kargatzen...');
+                
                 const response = await fetch('curriculum_eguneratua_2025-11-27.json');
                 if (!response.ok) {
                     throw new Error('JSON fitxategia ezin izan da kargatu');
                 }
                 
                 const parsedData = await response.json();
-                window.curriculumData = parsedData;
-                window.normalizeData(window.curriculumData);
+                
+                // 🔥 NORMALIZAR Y MIGRAR
+                window.curriculumData = window.normalizeData(parsedData);
+                
+                // Verificar migración
+                const tieneCompetencias = window.curriculumData.kompetentziak_ingreso !== undefined &&
+                                          window.curriculumData.kompetentziak_egreso !== undefined;
+                
+                console.log(`📊 JSON kargatua:`, {
+                    grados: Object.keys(window.curriculumData).filter(k => !k.includes('kompetentziak')).length,
+                    tieneCompetencias: tieneCompetencias,
+                    competenciasIngreso: window.curriculumData.kompetentziak_ingreso?.length || 0,
+                    competenciasEgreso: window.curriculumData.kompetentziak_egreso?.length || 0
+                });
                 
                 // UI eguneratu
                 document.getElementById('loadingOverlay').classList.add('hidden');
@@ -1128,26 +1501,37 @@ window.setupEventListeners = function() {
                 window.selectedDegree = null;
                 window.selectedYear = null;
                 window.selectedSubjectIndex = null;
-                window.initializeUI(); 
+                window.initializeUI();
                 window.resetEditor();
-
+                
                 if (isInitialLoad) {
-                    window.showToast("Supabase hutsik dago. Tokiko JSON kargatu da.", "normal");
-                    // ✅ SUPABASE-N GORDE
-                    await window.saveCurriculumData();
+                    const mensaje = tieneCompetencias 
+                        ? "✅ JSON migratua eta kargatua" 
+                        : "🔄 JSON zaharra migratua - Berria gorde ezazu";
+                    
+                    window.showToast(mensaje, "normal");
+                    
+                    // 🔥 GORDE SUPABASE-N (migratutako bertsioa)
+                    setTimeout(async () => {
+                        try {
+                            await window.saveCurriculumData();
+                            window.showToast("✅ Datuak migratu eta gorde dira Supabase-n", "success");
+                        } catch (error) {
+                            console.log("ℹ️ Ezin izan dira datuak gorde (hori normala da saiorik ez badago)");
+                        }
+                    }, 2000);
                 } else {
-                    window.showToast("Tokiko JSON datuak kargatu dira.", "success");
+                    window.showToast("✅ JSON datuak kargatu eta migratu dira", "success");
                 }
-
+        
             } catch (e) {
-                console.error("Tokiko JSON kargatze errorea:", e);
-                window.showToast("Errorea tokiko JSON datuak kargatzean.", "error");
+                console.error("❌ JSON kargatze errorea:", e);
+                window.showToast("❌ Errorea JSON datuak kargatzean.", "error");
                 document.getElementById('loadingOverlay').classList.add('hidden');
             }
-        }
+        };
         
-        // --- JSON Deskarga Funtzioa (Segurtasun Kopia) ---
-        // Datuak deskargatu (soilik administratzaileentzat)
+        // 🔥 DESKARGATU JSON (berria)
         window.downloadJsonData = async function() {
             const user = await checkAuth();
             
@@ -1157,28 +1541,66 @@ window.setupEventListeners = function() {
             }
             
             if (!window.curriculumData) {
-                window.showToast("Ez dago daturik deskargatzeko!", "error");
+                window.showToast("❌ Ez dago daturik deskargatzeko!", "error");
                 return;
             }
             
             try {
-                const dataStr = JSON.stringify(window.curriculumData, null, 2);
+                // 🔥 PREPARAR DATOS PARA EXPORTACIÓN
+                const datosExportar = JSON.parse(JSON.stringify(window.curriculumData));
+                
+                // Añadir metadatos
+                datosExportar._metadata = {
+                    version: "2.0",
+                    fecha_exportacion: new Date().toISOString(),
+                    estructura: "nueva_con_competencias_separadas",
+                    grados: Object.keys(datosExportar).filter(k => !k.includes('kompetentziak')).length,
+                    tiene_competencias_ingreso: !!datosExportar.kompetentziak_ingreso,
+                    tiene_competencias_egreso: !!datosExportar.kompetentziak_egreso
+                };
+                
+                const dataStr = JSON.stringify(datosExportar, null, 2);
                 const blob = new Blob([dataStr], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                const date = new Date().toISOString().slice(0, 10);
-                a.download = `curriculum_backup_${date}.json`;
+                
+                // 🔥 NOMBRE CON VERSIÓN
+                const fecha = new Date().toISOString().slice(0, 10);
+                const hora = new Date().toISOString().slice(11, 19).replace(/:/g, '-');
+                a.download = `curriculum_v2_${fecha}_${hora}.json`;
+                
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                window.showToast("✅ Datuak deskargatu dira (soilik administratzailea)", "success");
+                
+                window.showToast(`✅ JSON v2 deskargatua: ${a.download}`, "success");
+                
+                // 🔥 MOSTRAR RESUMEN DE EXPORTACIÓN
+                setTimeout(() => {
+                    const resumen = `
+        📊 JSON EXPORTATUAREN LABURPENA:
+        
+        • Bertsioa: 2.0 (estructura berria)
+        • Datuak: ${new Date().toLocaleString('eu-EU')}
+        • Graduak: ${datosExportar._metadata.grados}
+        • Kompetentziak Ingreso: ${datosExportar.kompetentziak_ingreso?.length || 0}
+        • Kompetentziak Egreso: ${datosExportar.kompetentziak_egreso?.length || 0}
+        • Fitxategia: ${a.download}
+        
+        ✅ Datuak ondo migratu dira!
+                    `.trim();
+                    
+                    console.log(resumen);
+                    alert(resumen);
+                }, 500);
+                
             } catch (e) {
-                console.error("JSON deskarga errorea:", e);
-                window.showToast("Errorea datuak deskargatzean.", "error");
+                console.error("❌ JSON deskarga errorea:", e);
+                window.showToast("❌ Errorea datuak deskargatzean.", "error");
             }
-        }
+        };
         
         // JSON kargatu (soilik administratzaileentzat)
         async function uploadJsonFile() {
@@ -1738,10 +2160,107 @@ window.setupEventListeners = function() {
                     });
                 }
             }
-        })();
+                    })();
+ 
+            // 🔥 FUNCIÓN MEJORADA DE VERIFICACIÓN
+            function verificarEstructuraDatos() {
+                if (!window.curriculumData) {
+                    console.log('⏳ Ez dago daturik egiaztatzeko');
+                    return;
+                }
+                
+                console.log('🔍 DATUEN EGITURA EGIAZTATZEN...');
+                
+                const resultados = {
+                    grados: [],
+                    competencias: { ingreso: false, egreso: false },
+                    errores: [],
+                    avisos: []
+                };
+                
+                // 1. Identificar grados vs competencias
+                Object.keys(window.curriculumData).forEach(key => {
+                    if (key === 'kompetentziak_ingreso') {
+                        resultados.competencias.ingreso = true;
+                        console.log(`✅ Kompetentziak ingreso: ${window.curriculumData[key].length} elementu`);
+                    } 
+                    else if (key === 'kompetentziak_egreso') {
+                        resultados.competencias.egreso = true;
+                        console.log(`✅ Kompetentziak egreso: ${window.curriculumData[key].length} elementu`);
+                    }
+                    else if (key === '_metadata') {
+                        // Ignorar metadatos
+                    }
+                    else {
+                        resultados.grados.push(key);
+                        console.log(`🎓 Grado: ${key}`);
+                    }
+                });
+                
+                // 2. Verificar estructura mínima
+                if (resultados.grados.length === 0) {
+                    resultados.errores.push('❌ Ez dago gradu definitua');
+                }
+                
+                if (!resultados.competencias.ingreso) {
+                    resultados.avisos.push('⚠️ Kompetentziak ingreso ez dago definituta (berria sortuko da automatikoki)');
+                }
+                
+                if (!resultados.competencias.egreso) {
+                    resultados.avisos.push('⚠️ Kompetentziak egreso ez dago definituta (berria sortuko da automatikoki)');
+                }
+                
+                // 3. Mostrar resumen
+                console.log('📊 EGITURA-LABURPENA:');
+                console.log(`• Graduak: ${resultados.grados.length} (${resultados.grados.join(', ')})`);
+                console.log(`• Kompetentziak ingreso: ${resultados.competencias.ingreso ? '✅ BAI' : '❌ EZ'}`);
+                console.log(`• Kompetentziak egreso: ${resultados.competencias.egreso ? '✅ BAI' : '❌ EZ'}`);
+                
+                if (resultados.errores.length > 0) {
+                    console.error('🚨 ERROREAK:', resultados.errores);
+                    window.showToast('⚠️ Datuak egitura akatsek', 'error');
+                }
+                
+                if (resultados.avisos.length > 0) {
+                    console.warn('ℹ️ AVISUAK:', resultados.avisos);
+                    
+                    // Si falta estructura de competencias, crearla automáticamente
+                    if (!resultados.competencias.ingreso || !resultados.competencias.egreso) {
+                        console.log('🔄 Kompetentziak egitura automatikoki sortzen...');
+                        
+                        if (!window.curriculumData.kompetentziak_ingreso) {
+                            window.curriculumData.kompetentziak_ingreso = [];
+                        }
+                        
+                        if (!window.curriculumData.kompetentziak_egreso) {
+                            window.curriculumData.kompetentziak_egreso = [];
+                        }
+                        
+                        // Guardar automáticamente si hay sesión
+                        setTimeout(() => {
+                            if (window.supabase && window.supabase.auth) {
+                                supabase.auth.getUser().then(({data}) => {
+                                    if (data.user) {
+                                        window.saveCurriculumData().then(() => {
+                                            console.log('✅ Kompetentziak egitura automatikoki gordeta');
+                                        });
+                                    }
+                                });
+                            }
+                        }, 2000);
+                    }
+                }
+                
+                if (resultados.errores.length === 0 && resultados.avisos.length === 0) {
+                    console.log('✅ Egitura PERFEKTUA!');
+                }
+                
+                return resultados;
+            }
     </script>
 </body>
 </html>
+
 
 
 
