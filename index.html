@@ -18,8 +18,159 @@
                    object-src 'none';
                    base-uri 'self';
                    form-action 'self' https://rthjrzmkozvungmiiikt.supabase.co;">
+    <!-- Diagnostiko script-a CSP meta tag-aren ONDOREN -->
+    <script>
+    // 🔥 DIAGNOSTIKO SCRIPT - Zer gertatzen ari den jakiteko
+    console.log('🔍 === DIAGNOSTIKO SCRIPT HASIERA ===');
+    
+    // 1. CSP KONFIGURAZIOA EGIAZTATU
+    const cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+    if (cspMeta) {
+        console.log('✅ CSP Meta tag aurkitua');
+        console.log('📋 CSP Politika:', cspMeta.getAttribute('content'));
+    } else {
+        console.warn('⚠️ CSP Meta tag EZ dago');
+    }
+    
+    // 2. FONT-SRC EGIAZTATU
+    const cspContent = cspMeta ? cspMeta.getAttribute('content') : '';
+    if (cspContent.includes('font-src')) {
+        const fontSrcMatch = cspContent.match(/font-src([^;]+)/);
+        if (fontSrcMatch) {
+            console.log('🔤 Font-src direktoriboa:', fontSrcMatch[1]);
+            console.log('❓ Gstatic baimenduta?', fontSrcMatch[1].includes('gstatic') ? '✅ BAI' : '❌ EZ');
+        }
+    }
+    
+    // 3. ERROREAK HARTZEKO LISTENERRAK
+    window.addEventListener('error', function(e) {
+        console.error('🔥 GLOBAL ERROR:', {
+            message: e.message,
+            filename: e.filename,
+            lineno: e.lineno,
+            colno: e.colno,
+            error: e.error
+        });
+        
+        // Font errorea bada
+        if (e.message.includes('font') || e.message.includes('gstatic')) {
+            console.warn('🎯 FONT ERROREA DETEXATUTA - Tailwind edo Font Awesome-tik etor daiteke');
+        }
+    });
+    
+    // 4. CSP VIOLAZIOAK HARTAZEKO
+    document.addEventListener('securitypolicyviolation', function(e) {
+        console.warn('🚨 CSP VIOLAZIOA:', {
+            blockedURI: e.blockedURI,
+            violatedDirective: e.violatedDirective,
+            originalPolicy: e.originalPolicy
+        });
+        
+        // Font violazioa bada
+        if (e.violatedDirective.includes('font')) {
+            console.log('🔤 FONT VIOLAZIOA - Arrazoiak:');
+            console.log('   - Font Awesome (cdnjs) erabiltzen ari al gara?');
+            console.log('   - Material Icons (gstatic) beharrezkoa al da?');
+            console.log('   - Tailwind-ek font kanpokoak erabiltzen ditu?');
+        }
+    });
+    
+    // 5. STYLESHEET-EN KARGA EGIAZTATU
+    function checkStylesheets() {
+        console.log('🎨 STYLESHEET-EN EGIAZTAPENA:');
+        
+        // Tailwind
+        const tailwindLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+            .filter(link => link.href.includes('tailwind'));
+        
+        console.log('   Tailwind esteka(k):', tailwindLinks.length);
+        tailwindLinks.forEach((link, i) => {
+            console.log(`   ${i+1}. ${link.href}`);
+            console.log(`      Ondo kargatuta? ${link.sheet ? '✅ BAI' : '❌ EZ'}`);
+        });
+        
+        // Font Awesome
+        const faLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+            .filter(link => link.href.includes('font-awesome') || link.href.includes('all.min.css'));
+        
+        console.log('   Font Awesome esteka(k):', faLinks.length);
+    }
+    
+    // 6. FONT KARGATZEKO ERROREAK DETEKTATU
+    const originalFontFace = window.FontFace;
+    window.FontFace = function(family, source, descriptors) {
+        console.log('🔤 FONT-A SORTZEN:', {
+            family: family,
+            source: typeof source === 'string' ? source.substring(0, 100) : source,
+            external: typeof source === 'string' && source.includes('http')
+        });
+        
+        const font = new originalFontFace(family, source, descriptors);
+        
+        font.load().then(function(loadedFont) {
+            console.log(`✅ FONT KARGATUTA: ${family}`);
+        }).catch(function(error) {
+            console.error(`❌ FONT KARGATZEKO ERROREA (${family}):`, error);
+        });
+        
+        return font;
+    };
+    
+    // 7. ORRIAREN KARGA EGIAZTATU
+    window.addEventListener('load', function() {
+        console.log('📄 === ORRIA OSO KARGATUTA ===');
+        
+        checkStylesheets();
+        
+        // Tailwind klase batzuk egiaztatu
+        const testDiv = document.createElement('div');
+        testDiv.className = 'hidden';
+        document.body.appendChild(testDiv);
+        const hasHiddenClass = window.getComputedStyle(testDiv).display === 'none';
+        console.log('   Tailwind "hidden" klasea funtzionatzen?', hasHiddenClass ? '✅ BAI' : '❌ EZ');
+        testDiv.remove();
+        
+        // Font Awesome ikonoak
+        const faTest = document.createElement('i');
+        faTest.className = 'fas fa-test';
+        document.body.appendChild(faTest);
+        const faLoaded = window.getComputedStyle(faTest, '::before').content !== 'none';
+        console.log('   Font Awesome ikonoak funtzionatzen?', faLoaded ? '✅ BAI' : '❌ EZ');
+        faTest.remove();
+    });
+    
+    // 8. DOM KARGATZEAN EGIAZTATU
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🌳 === DOM KARGATUTA ===');
+        console.log('   Body elementua:', document.body ? '✅ BAI' : '❌ EZ');
+        console.log('   Head elementua:', document.head ? '✅ BAI' : '❌ EZ');
+        
+        // Tailwind CSS-aren presentzia
+        setTimeout(checkStylesheets, 100);
+    });
+    
+    // 9. AZKEN EGIAZTAPENAK
+    setTimeout(function() {
+        console.log('⏱️ === 3s ONDOREN EGIAZTAPENA ===');
+        
+        // Tailwind erabiliz CSS propietate batzuk
+        const bodyStyles = window.getComputedStyle(document.body);
+        console.log('   Body background-color:', bodyStyles.backgroundColor);
+        console.log('   Body font-family:', bodyStyles.fontFamily);
+        
+        // Font errore kopurua
+        const errors = performance.getEntriesByType('resource')
+            .filter(entry => entry.initiatorType === 'css' && entry.name.includes('font'));
+        console.log('   Font resource erroreak:', errors.length);
+        
+    }, 3000);
+    
+    console.log('🔍 === DIAGNOSTIKO SCRIPT AMAITUTA (listenerrak aktibo) ===');
+    </script>
     <title>Curriculum Kudeatzailea (Supabase)</title>
-    <link href="css/tailwind.min.css" rel="stylesheet">
+    <!-- Changed Tailwind from CDN to local -->
+    <link href="tailwind.min.css" rel="stylesheet">
+    <!-- Original: <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet"> -->
     <script>
     // 🔥 MOVER ESTO AL INICIO - Definiciones críticas
     function checkSupabaseStatus() {
@@ -1401,6 +1552,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     </script>
 </body>
 </html>
+
 
 
 
