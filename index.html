@@ -1629,44 +1629,40 @@ window.setupEventListeners = function() {
 
         // ALDATU DOMContentLoaded:
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 DOM Kargatuta - Bukle gabeko hasiera');
-            
-            // 1. Lehenengo eta behin: loading overlay EZKUTATU
-            const loading = document.getElementById('loadingOverlay');
-            if (loading) {
-                loading.classList.add('hidden');
-                loading.style.display = 'none';
-                console.log('📦 Loading overlay ezkutatuta');
+        console.log('🚀 DOM Kargatuta - Bukle gabeko hasiera');
+        
+        // 1. Lehenengo eta behin: loading overlay EZKUTATU
+        const loading = document.getElementById('loadingOverlay');
+        if (loading) {
+            loading.classList.add('hidden');
+            loading.style.display = 'none';
+            console.log('📦 Loading overlay ezkutatuta');
+        }
+        
+        // 2. Logout parametroak kudeatu (UPDATE EGINDUA)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('logout')) {
+            handleLogoutFromUrl();
+        }
+        
+        // 3. Event listeners
+        if (typeof setupEventListeners === 'function') {
+            setupEventListeners();
+        }
+        
+        // 4. WebSocket (geroago)
+        setTimeout(() => {
+            if (typeof setupRealtimeUpdates === 'function') {
+                setupRealtimeUpdates();
             }
-            
-            // 2. Logout parametroak kudeatu (UPDATE EGINDUA)
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('logout')) {
-                handleLogoutFromUrl();
-            }
-        });
-            
-            // 3. ❌ KENDU HAU: setTimeout updateUI
-            // ✅ ORDEZKATU HONEGAZ:
-            // Supabase-k auth egoera berez kudeatuko du
-            
-            // 4. Event listeners
-            if (typeof setupEventListeners === 'function') {
-                setupEventListeners();
-            }
-            
-            // 5. WebSocket (geroago)
-            setTimeout(() => {
-                if (typeof setupRealtimeUpdates === 'function') {
-                    setupRealtimeUpdates();
-                }
-            }, 3000);
-            
-            console.log('✅ App ready - Buklerik gabe');
-        });
+        }, 3000);
+        
+        console.log('✅ App ready - Buklerik gabe');
+    }); 
     </script>
 </body>
 </html>
+
 
 
 
