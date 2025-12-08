@@ -299,16 +299,8 @@
         // Supabase hasieratu
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         // Detectar si hay sesión en la URL (después de redirección de Google)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        if (hashParams.has('access_token') || hashParams.has('error')) {
-            console.log('🔐 Procesando redirección de Google...');
-            // Limpiar URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
 
-let authInitialized = false;
-let authEventCount = 0;
-
+let authHandlerActive = true;
 supabase.auth.onAuthStateChange(async (event, session) => {
     authEventCount++;
     
@@ -1554,6 +1546,7 @@ window.setupEventListeners = function() {
     </script>
 </body>
 </html>
+
 
 
 
