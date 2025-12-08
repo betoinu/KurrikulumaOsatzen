@@ -209,197 +209,187 @@
     <script>
     // 🔥 BLOQUEADOR DEFINITIVO DE TAC/ADS
     // 🔥 BLOQUEADOR DEFINITIVO DE TAC/ADS - BERSIO HOBETUA
+// 🔥 BLOQUEADOR SEGURO Y MEJORADO
 (function() {
-    console.log('🛡️ Activando BLOQUEADOR MEJORADO para TAC/ADS...');
+    console.log('🛡️ Activando BLOQUEADOR SEGURO para TAC/ADS...');
     
-    // 🔴 LEHENENGO: Material Icons font erroreak blokeatu
-    const originalError = console.error;
-    console.error = function(...args) {
-        if (args[0] && typeof args[0] === 'string' && 
-            args[0].includes('fonts.gstatic.com') && 
-            args[0].includes('materialicons')) {
-            console.warn('🚫 Material Icons font error bloqueado (TAC/ADS)');
-            return; // Ez erakutsi errorea
+    // 1️⃣ LEHENENGO: Itxaron DOM prest egon arte
+    function initBloqueador() {
+        if (!document.head || !document.body) {
+            console.log('⏳ DOM oraindik ez dago prest, itxaron...');
+            setTimeout(initBloqueador, 100);
+            return;
         }
-        originalError.apply(console, args);
-    };
-    
-    // 🔴 CSP VIOLAZIOAK ISILDU
-    document.addEventListener('securitypolicyviolation', function(e) {
-        if (e.blockedURI && e.blockedURI.includes('fonts.gstatic.com')) {
-            console.warn('🔇 CSP font violación silenciada (TAC/ADS)');
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            return false;
-        }
-    });
-    
-    // 1. TAC SCRIPT GUZTIAK EZABATU
-    const removeTACScripts = () => {
-        let removedCount = 0;
         
-        // Script tag-ak
-        document.querySelectorAll('script').forEach(script => {
-            const src = script.src || '';
-            const content = script.textContent || '';
-            
-            if (src.includes('content-v2') || src.includes('tac') || 
-                content.includes('TAC') || content.includes('tac-Floater')) {
-                console.log(`🗑️ Eliminando script TAC: ${src.substring(0, 50)}`);
-                script.remove();
-                removedCount++;
-            }
-        });
+        console.log('✅ DOM listo, iniciando bloqueador...');
         
-        // Object tag-ak (tac-Floater-icon)
-        document.querySelectorAll('object, embed, iframe').forEach(el => {
-            if (el.className && el.className.includes('tac')) {
-                console.log(`🗑️ Eliminando objeto TAC: ${el.className}`);
-                el.remove();
-                removedCount++;
+        // 2️⃣ FONT ERROREAK BLOKEATU (LEHENENGO)
+        const originalError = console.error;
+        console.error = function(...args) {
+            if (args[0] && typeof args[0] === 'string' && 
+                args[0].includes('fonts.gstatic.com') && 
+                args[0].includes('materialicons')) {
+                // 🎯 MATERIAL ICONS ERROREA - ISILDU
+                return;
             }
-        });
+            originalError.apply(console, args);
+        };
         
-        if (removedCount > 0) {
-            console.log(`✅ ${removedCount} elemento TAC eliminados`);
-        }
-    };
-    
-    // 2. HEAD-AREN appendChild GAINIDATZI
-    const originalHeadAppend = document.head.appendChild;
-    document.head.appendChild = function(element) {
-        if (element.tagName === 'SCRIPT' || element.tagName === 'LINK' || element.tagName === 'STYLE') {
-            const src = element.src || element.href || '';
-            const content = element.textContent || '';
-            
-            if (src.includes('content-v2') || src.includes('tac') || 
-                content.includes('TAC') || content.includes('Material Icons')) {
-                console.log('🚫 Previniendo elemento TAC en head:', element.tagName);
-                return element; // Ez gehitu
+        // 3️⃣ CSP VIOLAZIOAK ISILDU
+        document.addEventListener('securitypolicyviolation', function(e) {
+            if (e.blockedURI && e.blockedURI.includes('fonts.gstatic.com')) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return false;
             }
-        }
-        return originalHeadAppend.call(this, element);
-    };
-    
-    // 3. BODY-AREN appendChild GAINIDATZI
-    const originalBodyAppend = document.body.appendChild;
-    document.body.appendChild = function(element) {
-        if (element.tagName === 'OBJECT' || element.tagName === 'EMBED') {
-            if (element.className && element.className.includes('tac')) {
-                console.log('🚫 Previniendo objeto TAC en body:', element.className);
-                return element; // Ez gehitu
-            }
-        }
-        return originalBodyAppend.call(this, element);
-    };
-    
-    // 4. CSS MATERIAL ICONS KENTZEKO
-    const removeMaterialIconsCSS = () => {
-        // Link tag-ak
-        document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
-            if (link.href.includes('fonts.googleapis.com') || 
-                link.href.includes('material-icons')) {
-                console.log('🗑️ Eliminando Material Icons CSS:', link.href);
-                link.remove();
-            }
-        });
+        }, true);
         
-        // Style tag-ak
-        document.querySelectorAll('style').forEach(style => {
-            if (style.textContent.includes('Material Icons') || 
-                style.textContent.includes('@font-face') && 
-                style.textContent.includes('materialicons')) {
-                console.log('🗑️ Eliminando Material Icons @font-face');
-                style.remove();
-            }
-        });
-    };
-    
-    // 5. TAC ELEMENTUAK BILATU ETA EZABATU
-    const removeTACElements = () => {
-        // Klase bidez
-        document.querySelectorAll('[class*="tac"], [id*="tac"]').forEach(el => {
-            console.log(`🗑️ Eliminando elemento TAC: ${el.className || el.id}`);
-            el.remove();
-        });
-        
-        // Tac-Floater bereziki
-        const tacFloater = document.querySelector('.tac-Floater-icon');
-        if (tacFloater) {
-            console.log('🎯 Tac-Floater-icon aurkituta eta ezabatuta');
-            tacFloater.remove();
-        }
-    };
-    
-    // 6. FONT ERROREAK BLOKEATZEKO LISTENERRA
-    window.addEventListener('error', function(e) {
-        if (e.message && e.message.includes('fonts.gstatic.com/s/materialicons')) {
-            console.log('🔇 Font error TAC bloqueado');
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            
-            // Saiatu TAC script-ak kentzen
-            removeTACScripts();
-            removeTACElements();
-            
-            return false;
-        }
-    }, true);
-    
-    // 7. EXEKUTATU DENA
-    console.log('🔍 TAC/ADS limpieza inicial...');
-    removeTACScripts();
-    removeMaterialIconsCSS();
-    removeTACElements();
-    
-    // 8. OBSERBADOREAREN KONFIGURAZIO HOBETUA
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((node) => {
-                // Script berriak
-                if (node.tagName === 'SCRIPT') {
-                    const src = node.src || '';
-                    const content = node.textContent || '';
+        // 4️⃣ TAC SCRIPT GUZTIAK EZABATU (FUNTZIO SEGURUA)
+        const removeTACScripts = () => {
+            // Script tag-ak
+            document.querySelectorAll('script').forEach(script => {
+                try {
+                    const src = script.src || '';
+                    const content = script.textContent || '';
+                    
                     if (src.includes('content-v2') || src.includes('tac') || 
-                        content.includes('TAC')) {
-                        console.log('👀 Script TAC detectado en mutación:', src);
-                        node.remove();
-                        removeTACElements(); // Elementuak ere kendu
+                        content.includes('TAC') || content.includes('tac-Floater')) {
+                        console.log(`🗑️ Script TAC eliminado: ${src.substring(0, 50) || 'inline'}`);
+                        script.remove();
                     }
-                }
-                
-                // Object/iframe berriak
-                if (node.tagName === 'OBJECT' || node.tagName === 'EMBED' || node.tagName === 'IFRAME') {
-                    if (node.className && node.className.includes('tac')) {
-                        console.log('👀 Objeto TAC detectado en mutación:', node.className);
-                        node.remove();
-                    }
-                }
-                
-                // Klase bidez
-                if (node.nodeType === 1 && node.className && 
-                    (node.className.includes('tac') || node.id && node.id.includes('tac'))) {
-                    console.log('👀 Elemento TAC por clase/id:', node.className || node.id);
-                    node.remove();
+                } catch (e) {
+                    console.warn('⚠️ Error eliminando script:', e);
                 }
             });
-        });
-    });
-    
-    observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['class', 'id']
-    });
-    
-    // 9. PERIODIKOKI EXEKUTATU
-    setInterval(() => {
+            
+            // TAC elementuak
+            document.querySelectorAll('.tac-Floater-icon, [class*="tac"], [id*="tac"]').forEach(el => {
+                try {
+                    console.log(`🗑️ Elemento TAC eliminado: ${el.className || el.id}`);
+                    el.remove();
+                } catch (e) {
+                    console.warn('⚠️ Error eliminando elemento:', e);
+                }
+            });
+        };
+        
+        // 5️⃣ HEAD appendChild SEGURU GAINIDATZI
+        try {
+            const originalHeadAppend = document.head.appendChild.bind(document.head);
+            document.head.appendChild = function(element) {
+                try {
+                    if (element.tagName === 'SCRIPT') {
+                        const src = element.src || '';
+                        const content = element.textContent || '';
+                        
+                        if (src.includes('content-v2') || src.includes('tac') || 
+                            content.includes('TAC')) {
+                            console.log('🚫 Script TAC prevenido en head');
+                            return element; // Ez gehitu
+                        }
+                    }
+                    return originalHeadAppend(element);
+                } catch (e) {
+                    console.warn('⚠️ Error en head.appendChild:', e);
+                    return element;
+                }
+            };
+        } catch (e) {
+            console.error('❌ Error ganando head.appendChild:', e);
+        }
+        
+        // 6️⃣ BODY appendChild SEGURU GAINIDATZI
+        try {
+            const originalBodyAppend = document.body.appendChild.bind(document.body);
+            document.body.appendChild = function(element) {
+                try {
+                    if (element.tagName === 'SCRIPT' || element.tagName === 'OBJECT') {
+                        const className = element.className || '';
+                        if (className.includes('tac')) {
+                            console.log('🚫 Elemento TAC prevenido en body');
+                            return element; // Ez gehitu
+                        }
+                    }
+                    return originalBodyAppend(element);
+                } catch (e) {
+                    console.warn('⚠️ Error en body.appendChild:', e);
+                    return element;
+                }
+            };
+        } catch (e) {
+            console.error('❌ Error ganando body.appendChild:', e);
+        }
+        
+        // 7️⃣ MATERIAL ICONS CSS KENTZEKO
+        const removeMaterialIcons = () => {
+            // Google Fonts link-ak
+            document.querySelectorAll('link[href*="fonts.googleapis.com"]').forEach(link => {
+                try {
+                    console.log('🗑️ Google Fonts link eliminado');
+                    link.remove();
+                } catch (e) {}
+            });
+            
+            // Material Icons @font-face
+            document.querySelectorAll('style').forEach(style => {
+                try {
+                    if (style.textContent.includes('Material Icons') || 
+                        style.textContent.includes('materialicons')) {
+                        console.log('🗑️ Material Icons @font-face eliminado');
+                        style.remove();
+                    }
+                } catch (e) {}
+            });
+        };
+        
+        // 8️⃣ OBSERBADORE SEGURUA
+        try {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        // Script berriak
+                        if (node.tagName === 'SCRIPT') {
+                            const src = node.src || '';
+                            if (src.includes('content-v2') || src.includes('tac')) {
+                                console.log('👀 Script TAC detectado (observador)');
+                                node.remove();
+                            }
+                        }
+                        
+                        // TAC elementuak
+                        if (node.nodeType === 1 && node.className && node.className.includes('tac')) {
+                            console.log('👀 Elemento TAC detectado (observador)');
+                            node.remove();
+                        }
+                    });
+                });
+            });
+            
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true
+            });
+        } catch (e) {
+            console.error('❌ Error observador:', e);
+        }
+        
+        // 9️⃣ EXEKUTATU KONFIGURAZIO INIZIALA
+        console.log('🔍 Limpieza inicial TAC...');
         removeTACScripts();
-        removeTACElements();
-    }, 1000);
+        removeMaterialIcons();
+        
+        // 🔁 PERIODIKOKI EZABATU
+        setInterval(removeTACScripts, 1500);
+        
+        console.log('✅ BLOQUEADOR SEGURO activado');
+    }
     
-    console.log('✅ BLOQUEADOR MEJORADO activado para TAC/ADS');
+    // 🚀 ABIARAZI (DOM prest dagoenean)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBloqueador);
+    } else {
+        initBloqueador();
+    }
 })();
     </script>
     <script>
@@ -750,12 +740,70 @@ supabase.auth.onAuthStateChange(async (event, session) => {
                 }
             });
         }
+
+        // 🔥 GEHITU HAU zure JavaScript kodea hasieran (Supabase konfigurazioaren ONDOREN)
+window.setupEventListeners = function() {
+    console.log('🔌 setupEventListeners ejecutando...');
     
-        // 🔥🔥🔥 GEHITU HEMEN - fetch handler 🔥🔥🔥
-        window.addEventListener('fetch', event => {
-            event.preventDefault();
-            return false;
+    // EGIAZTATU ELEMENTUAK EXISTITZEN DIREN
+    const elements = {
+        saveBtn: document.getElementById('saveBtn'),
+        addUnitBtn: document.getElementById('addUnitBtn'),
+        degreeSelect: document.getElementById('degreeSelect'),
+        jsonFileInput: document.getElementById('jsonFileInput'),
+        downloadBackupBtn: document.getElementById('downloadBackupBtn'),
+        uploadJsonBtn: document.getElementById('uploadJsonBtn')
+    };
+    
+    console.log('🔍 Elementos encontrados:', Object.keys(elements).filter(k => elements[k]));
+    
+    // LISTENER SIMPLEAK
+    if (elements.saveBtn) {
+        elements.saveBtn.addEventListener('click', saveCurriculumData);
+    }
+    
+    if (elements.addUnitBtn) {
+        elements.addUnitBtn.addEventListener('click', window.addUnit);
+    }
+    
+    if (elements.degreeSelect) {
+        elements.degreeSelect.addEventListener('change', window.onDegreeChange);
+    }
+    
+    if (elements.downloadBackupBtn) {
+        elements.downloadBackupBtn.addEventListener('click', window.downloadJsonData);
+    }
+    
+    if (elements.uploadJsonBtn) {
+        elements.uploadJsonBtn.addEventListener('click', uploadJsonFile);
+    }
+    
+    // JSON FITXATEGIA
+    if (elements.jsonFileInput) {
+        elements.jsonFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    window.curriculumData = JSON.parse(e.target.result);
+                    if (window.normalizeData) window.normalizeData(window.curriculumData);
+                    if (window.initializeUI) window.initializeUI();
+                    if (window.showToast) window.showToast('✅ JSON kargatuta!', 'success');
+                    setTimeout(() => {
+                        if (window.saveCurriculumData) window.saveCurriculumData();
+                    }, 1000);
+                } catch (error) {
+                    if (window.showToast) window.showToast('❌ JSON errorea', 'error');
+                }
+            };
+            reader.readAsText(file);
         });
+    }
+    
+    console.log('✅ Event listeners configurados');
+};     
 
         // 🔥 HOBETSUA - Datuak mantendu baina ikuspena kontrolatu
         function hideCurriculumData() {
@@ -1647,65 +1695,52 @@ supabase.auth.onAuthStateChange(async (event, session) => {
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 CURRICULUM APP STARTING...');
             
-            // 1️⃣ LEHENENGO: EZABATU updateUI() deialdi guztiak
-            // ❌ EZ EGIN HAU: checkSupabaseStatus() → updateUI() deitzen du
+            // 1. Lehenengo, karga adierazlea ezkutatu
+            const loading = document.getElementById('loadingOverlay');
+            if (loading) loading.classList.add('hidden');
             
-            // 2️⃣ Soilik oinarrizkoa konfiguratu
+            // 2. Logout detektatu
             handleLogoutFromUrl();
             
-            // 3️⃣ Supabase konprobatu soilik (ez UI eguneratu)
-            console.log('🔍 Supabase konprobatzen...');
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            if (user && isValidEmail(user.email)) {
-                console.log('✅ Erabiltzailea dago: ' + user.email);
-                // Supabase-k eguneratuko du UI-a onAuthStateChange-en
-            } else {
-                console.log('🔓 Saioa itxita');
-                // UI oinarrizkoa erakutsi
-                document.getElementById('loadingOverlay').classList.add('hidden');
-                document.getElementById('signInBtn').classList.remove('hidden');
-                document.getElementById('noDataMessage').classList.remove('hidden');
+            // 3. Supabase konprobatu
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (user && isValidEmail(user.email)) {
+                    console.log('✅ Erabiltzailea:', user.email);
+                    // Supabase-k eguneratuko du UI-a
+                } else {
+                    console.log('🔓 Saioa itxita');
+                    // UI oinarrizkoa
+                    document.getElementById('signInBtn')?.classList.remove('hidden');
+                    document.getElementById('noDataMessage')?.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('❌ Auth error:', error);
             }
             
-            // 4️⃣ Event listenerrak bakarrik (EZ datuak kargatu)
-            setupEventListeners();
+            // 4. setupEventListeners funtzioa DEFINITU existitzen ez bada
+            if (typeof window.setupEventListeners === 'undefined') {
+                console.warn('⚠️ setupEventListeners ez dago definitua, definitu...');
+                window.setupEventListeners = function() {
+                    console.log('🔌 Event listeners básicos');
+                };
+            }
             
-            // 5️⃣ Denbora errealeko eguneraketak (geroago)
+            // 5. Exekutatu
+            if (typeof setupEventListeners === 'function') {
+                setupEventListeners();
+            }
+            
+            // 6. Denbora errealeko eguneraketak (geroago)
             setTimeout(() => {
-                setupRealtimeUpdates();
-            }, 1000);
+                if (typeof setupRealtimeUpdates === 'function') {
+                    setupRealtimeUpdates();
+                }
+            }, 2000);
             
-            console.log('✅ App hasieratuta - Supabase-k maneiatuko du auth');
+            console.log('✅ App inicializada');
         });
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
