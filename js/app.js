@@ -840,46 +840,56 @@ function setUILoginState(isLoggedIn, user = null) {
             }
         }
 
-        // 🔥 FUNCIÓN ÚNICA PARA AMBOS TIPOS (independiente del grado)
-        window.showCompetenciasGlobales = async function(tipo) {
-            console.log(`📚 Mostrando competencias ${tipo} (globales)`);
+        // NUEVO EDITOR PARA INGRESO (con ámbitos)
+        async function mostrarEditorCompetenciasIngresoPorAmbitos() {
+            console.log('🎨 Mostrando competencias ingreso por ámbitos');
             
-            // Mostrar editor
+            // 1. Mostrar panel
             document.getElementById('welcomeEditor').classList.add('hidden');
             document.getElementById('editorPanel').classList.remove('hidden');
             
-            // Configurar título
-            const esIngreso = tipo === 'ingreso';
-            document.getElementById('subjectTitle').textContent = 
-                esIngreso ? 'Sarrerako Kompetentziak' : 'Irteerako Kompetentziak';
-            
-            document.getElementById('subjectType').textContent = 'Kompetentziak Globalak';
+            // 2. Configurar título
+            document.getElementById('subjectTitle').textContent = 'Sarrerako Kompetentziak';
+            document.getElementById('subjectType').textContent = 'Arloen arabera antolatuta';
             document.getElementById('subjectCredits').textContent = '';
             
-            // Ocultar campos de asignatura (no aplican)
-            document.getElementById('subjectNameEdit').value = '';
-            document.getElementById('subjectArea').value = '';
-            document.getElementById('subjectRAs').value = '';
+            // 3. Obtener ámbitos y colores
+            const eremuak = Object.keys(window.curriculumData.matrices?.colores_eremuak || {});
+            const colores = window.curriculumData.matrices?.colores_eremuak || {};
             
-            // Deshabilitar unidad didáctica
-            document.getElementById('unitName').disabled = true;
-            document.getElementById('unitContent').disabled = true;
-            document.getElementById('addUnitBtn').disabled = true;
-            
-            // Asegurar estructura en curriculumData
-            const competenciasKey = esIngreso ? 'kompetentziak_ingreso' : 'kompetentziak_egreso';
-            
-            if (!window.curriculumData[competenciasKey]) {
-                window.curriculumData[competenciasKey] = [];
-                console.log(`✅ Estructura creada: ${competenciasKey}`);
+            if (eremuak.length === 0) {
+                // Fallback si no hay colores
+                const eremuakLista = extraerEremuakDelCurriculum();
+                renderizarEditorSimple(eremuakLista, tipo);
+                return;
             }
             
-            const competencias = window.curriculumData[competenciasKey];
+            // 4. Renderizar interfaz avanzada
+            renderizarEditorPorAmbitos(eremuak, colores, 'ingreso');
+        }
+
+        function mostrarEditorCompetenciasEgresoMejorado() {
+            console.log('🎨 Mostrando competencias egreso mejorado');
             
-            // Renderizar lista
-            renderizarCompetencias(competencias, competenciasKey);
-        };
-        
+            // 1. Mostrar panel
+            document.getElementById('welcomeEditor').classList.add('hidden');
+            document.getElementById('editorPanel').classList.remove('hidden');
+            
+            // 2. Configurar título
+            document.getElementById('subjectTitle').textContent = 'Irteerako Kompetentziak';
+            document.getElementById('subjectType').textContent = 'Graduaren amaierako gaitasunak';
+            document.getElementById('subjectCredits').textContent = '';
+            
+            // 3. Inicializar si está vacío
+            if (!window.curriculumData.kompetentziak_egreso || 
+                !Array.isArray(window.curriculumData.kompetentziak_egreso)) {
+                window.curriculumData.kompetentziak_egreso = [];
+            }
+            
+            // 4. Renderizar editor simple
+            renderizarEditorSimple(window.curriculumData.kompetentziak_egreso, 'egreso');
+        }
+
         // 🔥 RENDERIZAR LISTA DE COMPETENCIAS
         function renderizarCompetencias(competencias, competenciasKey) {
             let html = `
@@ -2902,6 +2912,675 @@ function actualizarEstadisticasMatrices() {
         window.extraerEremuakDelCurriculum = extraerEremuakDelCurriculum;
         window.migrarEstructuraVieja = migrarEstructuraVieja;
 
+// ============================================
+// 🔥 SISTEMA AVANZADO DE COMPETENCIAS DE INGRESO POR ÁMBITOS
+// ============================================
+
+// 🔥 1. REEMPLAZAR showCompetenciasGlobales CON VERSIÓN MEJORADA
+const originalShowCompetenciasGlobales = window.showCompetenciasGlobales;
+
+window.showCompetenciasGlobales = function(tipo) {
+    console.log(`🎯 showCompetenciasGlobales: ${tipo}`);
+    
+    // Ocultar editor genérico
+    document.getElementById('welcomeEditor').classList.add('hidden');
+    document.getElementById('editorPanel').classList.remove('hidden');
+    
+    if (tipo === 'ingreso') {
+        // EDITOR INGRESO CON ÁMBITOS
+        document.getElementById('subjectTitle').textContent = 'Sarrerako Kompetentziak';
+        document.getElementById('subjectType').textContent = 'Arlo bakoitzaren arabera';
+        
+        // Usar ámbitos de matrices si existen
+        const eremuak = window.curriculumData.matrices?.colores_eremuak 
+            ? Object.keys(window.curriculumData.matrices.colores_eremuak)
+            : extraerEremuakDelCurriculum();
+        
+        renderizarCompetenciasPorAmbitos(eremuak, 'ingreso');
+        
+    } else {
+        // EDITOR EGRESO SIMPLE
+        document.getElementById('subjectTitle').textContent = 'Irteerako Kompetentziak';
+        document.getElementById('subjectType').textContent = 'Graduazio gaitasunak';
+        
+        // Asegurar array
+        if (!window.curriculumData.kompetentziak_egreso) {
+            window.curriculumData.kompetentziak_egreso = [];
+        }
+        
+        renderizarCompetenciasListaSimple(window.curriculumData.kompetentziak_egreso, 'egreso');
+    }
+};;
+
+// 🔥 RENDERIZAR POR ÁMBITOS (para ingreso)
+function renderizarCompetenciasPorAmbitos(eremuak, tipo) {
+    console.log(`🎨 Renderizando ${eremuak.length} ámbitos para ${tipo}`);
+    
+    let html = `
+    <div class="space-y-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-5">
+            <h3 class="text-xl font-bold text-blue-800 mb-2">
+                <i class="fas fa-sign-in-alt mr-2"></i>Sarrerako Kompetentziak
+            </h3>
+            <p class="text-blue-600">
+                Definitu ikasleek gradu honetan <strong>sartzeko</strong> behar dituzten gaitasunak.
+                Bana ditzakezu arlo bakoitzaren arabera.
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    `;
+    
+    // Renderizar cada ámbito
+    eremuak.forEach((eremua, index) => {
+        const color = window.curriculumData.matrices?.colores_eremuak?.[eremua] || 
+                     ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'][index % 5];
+        
+        html += `
+        <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition" 
+             style="border-left: 4px solid ${color};">
+            <div class="flex items-center mb-3">
+                <div class="w-8 h-8 rounded-full mr-3" style="background: ${color};"></div>
+                <h4 class="font-bold text-gray-800">${eremua}</h4>
+            </div>
+            
+            <div class="space-y-3">
+                <!-- Competencias existentes -->
+                <div id="competencias-${eremua.replace(/\s+/g, '-')}" class="space-y-2">
+                    <!-- Se llenará dinámicamente -->
+                    <div class="text-gray-500 text-sm italic py-2 text-center">
+                        Ez dago kompetentziarik definituta
+                    </div>
+                </div>
+                
+                <!-- Botón añadir -->
+                <button onclick="añadirCompetenciaIngreso('${eremua}')" 
+                        class="w-full text-sm px-3 py-2 rounded border border-dashed border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition flex items-center justify-center">
+                    <i class="fas fa-plus mr-2"></i>Gehitu kompetentzia
+                </button>
+            </div>
+        </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        
+        <!-- Panel de ayuda -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-6">
+            <h4 class="font-bold text-gray-700 mb-2 flex items-center">
+                <i class="fas fa-lightbulb mr-2"></i>Zertarako dira sarrerako kompetentziak?
+            </h4>
+            <ul class="text-sm text-gray-600 space-y-1">
+                <li>• Ikasleak gradu honetan <strong>sartzeko</strong> behar dituen oinarrizko ezagutzak</li>
+                <li>• Ebaluatzen dira sarrera-prozesuan (portfolio, elkarrizketa, azterketak)</li>
+                <li>• Arlo bakoitzaren berezitasunak islatzen dituzte</li>
+                <li>• Graduaren kalitatea ziurtatzen dute hasieratik</li>
+            </ul>
+        </div>
+    </div>
+    `;
+    
+    document.getElementById('unitsContainer').innerHTML = html;
+    document.getElementById('noUnitsMessage').classList.add('hidden');
+}
+
+// 🔥 RENDERIZAR LISTA SIMPLE (para egreso)
+function renderizarCompetenciasListaSimple(competencias, tipo) {
+    let html = `
+    <div class="space-y-6">
+        <div class="bg-green-50 border border-green-200 rounded-lg p-5">
+            <h3 class="text-xl font-bold text-green-800 mb-2">
+                <i class="fas fa-sign-out-alt mr-2"></i>Irteerako Kompetentziak
+            </h3>
+            <p class="text-green-600">
+                Definitu ikasleak graduatu ondoren <strong>izan behar dituen</strong> gaitasun profesionalak.
+            </p>
+        </div>
+        
+        <div class="space-y-4" id="lista-competencias-egreso">
+    `;
+    
+    if (competencias.length === 0) {
+        html += `
+            <div class="text-center py-10 text-gray-400">
+                <i class="fas fa-list-alt text-4xl mb-4"></i>
+                <p class="text-lg mb-2">Ez dago irteerako kompetentziarik</p>
+                <p class="text-sm mb-6">Gehitu lehenengo kompetentzia ikasleak graduatu ondoren izan behar dituen gaitasunak definitzeko</p>
+                <button onclick="añadirCompetenciaEgreso()" 
+                        class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">
+                    <i class="fas fa-plus mr-2"></i>Gehitu Lehenengo Kompetentzia
+                </button>
+            </div>
+        `;
+    } else {
+        competencias.forEach((comp, index) => {
+            html += `
+            <div class="border border-gray-200 rounded-lg p-4 hover:bg-green-50 transition">
+                <div class="flex justify-between items-start">
+                    <div class="flex-grow">
+                        <div class="mb-2">
+                            <input type="text" 
+                                   value="${comp.kodea || `SE${index + 1}`}"
+                                   class="w-24 border border-gray-300 rounded px-2 py-1 text-sm font-bold"
+                                   onchange="actualizarCodigoCompetenciaEgreso(${index}, this.value)"
+                                   placeholder="Kodea">
+                        </div>
+                        <textarea class="w-full border border-gray-300 rounded p-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" 
+                                  rows="2"
+                                  onchange="actualizarDescripcionCompetenciaEgreso(${index}, this.value)"
+                                  placeholder="Deskribatu graduatuak izan behar duen gaitasuna...">${comp.deskribapena || ''}</textarea>
+                    </div>
+                    <button onclick="eliminarCompetenciaEgreso(${index})" 
+                            class="ml-4 text-red-400 hover:text-red-600">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            `;
+        });
+    }
+    
+    html += `
+        </div>
+        
+        <button onclick="añadirCompetenciaEgreso()" 
+                class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center">
+            <i class="fas fa-plus mr-2"></i>Gehitu Kompetentzia Berria
+        </button>
+    </div>
+    `;
+    
+    document.getElementById('unitsContainer').innerHTML = html;
+    document.getElementById('noUnitsMessage').classList.add('hidden');
+}
+
+// 🔥 3. OBTENER EREMUAK PARA COMPETENCIAS
+async function obtenerEremuakParaCompetencias() {
+    console.log('🔍 Obteniendo eremuak...');
+    
+    let eremuak = [];
+    
+    // Opción 1: Usar función existente
+    if (typeof extraerEremuakDelCurriculum === 'function') {
+        eremuak = extraerEremuakDelCurriculum();
+        console.log(`✅ ${eremuak.length} eremuak encontrados vía extraerEremuakDelCurriculum`);
+    }
+    
+    // Opción 2: Extraer manualmente si la función no existe
+    if (eremuak.length === 0 && window.curriculumData) {
+        eremuak = extraerEremuakManual();
+        console.log(`✅ ${eremuak.length} eremuak encontrados manualmente`);
+    }
+    
+    // Opción 3: Eremuak por defecto si no hay ninguno
+    if (eremuak.length === 0) {
+        eremuak = [
+            'DISEINU PROIEKTUAK ETA METODOLOGIAK',
+            'DISEINUAREN IKUS-ADIERAZPENA', 
+            'DISEINUAREN OINARRIAK',
+            'ERAIKUNTZA ETA TEKNOLOGIA',
+            'KUDEAKETA ETA PROFESIONALTASUNA'
+        ];
+        console.log(`⚠️ Usando eremuak por defecto: ${eremuak.length}`);
+    }
+    
+    return eremuak.sort();
+}
+
+// 🔥 4. EXTRACCIÓN MANUAL DE EREMUAK
+function extraerEremuakManual() {
+    if (!window.curriculumData) return [];
+    
+    const eremuakSet = new Set();
+    
+    // Recorrer todos los grados y asignaturas
+    Object.values(window.curriculumData).forEach(grado => {
+        if (typeof grado === 'object' && !Array.isArray(grado)) {
+            Object.values(grado).forEach(curso => {
+                if (Array.isArray(curso)) {
+                    curso.forEach(asignatura => {
+                        if (asignatura.arloa && asignatura.arloa.trim()) {
+                            eremuakSet.add(asignatura.arloa.trim());
+                        }
+                        if (asignatura.eremua && asignatura.eremua.trim()) {
+                            eremuakSet.add(asignatura.eremua.trim());
+                        }
+                    });
+                }
+            });
+        }
+    });
+    
+    return Array.from(eremuakSet);
+}
+
+// 🔥 5. INICIALIZAR ESTRUCTURA DE DATOS
+function inicializarEstructuraCompetenciasIngreso(eremuak) {
+    console.log('🏗️ Inicializando estructura competencias ingreso...');
+    
+    // Crear estructura mejorada si no existe
+    if (!window.curriculumData.kompetentziak_ingreso_mejorado) {
+        window.curriculumData.kompetentziak_ingreso_mejorado = {
+            version: "2.0",
+            ultima_actualizacion: new Date().toISOString(),
+            competencias_por_eremua: {},
+            configuracion: {
+                eremuak_activos: eremuak,
+                grados_relacionados: obtenerGradosDelCurriculum(),
+                niveles_disponibles: ['B', 'J', 'A'] // Basikoa, Jakintsua, Aurreratua
+            }
+        };
+        console.log('✅ Estructura mejorada creada');
+    }
+    
+    // Asegurar que todos los eremuak están en la estructura
+    eremuak.forEach(eremua => {
+        if (!window.curriculumData.kompetentziak_ingreso_mejorado.competencias_por_eremua[eremua]) {
+            window.curriculumData.kompetentziak_ingreso_mejorado.competencias_por_eremua[eremua] = [];
+        }
+    });
+    
+    // Migrar datos antiguos si existen
+    migrarCompetenciasAntiguas();
+}
+
+// 🔥 6. MIGRAR COMPETENCIAS ANTIGUAS
+function migrarCompetenciasAntiguas() {
+    // Si hay competencias en formato antiguo, migrarlas
+    if (window.curriculumData.kompetentziak_ingreso && 
+        Array.isArray(window.curriculumData.kompetentziak_ingreso) &&
+        window.curriculumData.kompetentziak_ingreso.length > 0) {
+        
+        console.log(`🔄 Migrando ${window.curriculumData.kompetentziak_ingreso.length} competencias antiguas`);
+        
+        // Por defecto, ponerlas en el primer ámbito
+        const primerEremua = Object.keys(window.curriculumData.kompetentziak_ingreso_mejorado.competencias_por_eremua)[0];
+        
+        if (primerEremua) {
+            window.curriculumData.kompetentziak_ingreso_mejorado.competencias_por_eremua[primerEremua] = 
+                window.curriculumData.kompetentziak_ingreso.map((comp, index) => ({
+                    ...comp,
+                    eremua: primerEremua,
+                    nivel: comp.nivel || 'B',
+                    kodea: comp.kodea || `SI${index + 1}`
+                }));
+            
+            console.log(`✅ Competencias migradas a: ${primerEremua}`);
+        }
+    }
+}
+
+// 🔥 7. RENDERIZAR EDITOR PRINCIPAL
+function renderizarEditorCompetenciasIngreso(eremuak) {
+    console.log(`🎨 Renderizando editor con ${eremuak.length} ámbitos`);
+    
+    // Contar competencias totales
+    const totalCompetencias = contarCompetenciasTotales();
+    
+    let html = `
+    <div class="space-y-6" id="editorCompetenciasIngreso">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-xl border border-blue-300">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div>
+                    <h3 class="text-2xl font-bold text-blue-800 mb-2 flex items-center">
+                        <i class="fas fa-sign-in-alt mr-3"></i>Sarrerako Kompetentziak
+                    </h3>
+                    <p class="text-blue-700">
+                        Definitu ikasleek gradu honetan sartzeko behar dituzten gaitasunak, arlo bakoitzaren arabera
+                    </p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <div class="flex items-center space-x-6">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-blue-800">${eremuak.length}</div>
+                            <div class="text-sm text-blue-700">Arlo</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-green-800">${totalCompetencias}</div>
+                            <div class="text-sm text-green-700">Kompetentzia</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Panel de acciones rápidas -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <button onclick="añadirCompetenciaATodosEremuak()" 
+                    class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg flex flex-col items-center justify-center transition shadow-sm">
+                <i class="fas fa-plus-circle text-xl mb-2"></i>
+                <span class="font-medium">Gehitu Guztietan</span>
+                <span class="text-xs opacity-90">Kompetentzia berria arlo guztietan</span>
+            </button>
+            
+            <button onclick="organizarPorNiveles()" 
+                    class="bg-yellow-500 hover:bg-yellow-600 text-white p-4 rounded-lg flex flex-col items-center justify-center transition shadow-sm">
+                <i class="fas fa-sort-amount-down text-xl mb-2"></i>
+                <span class="font-medium">Antolatu Mailak</span>
+                <span class="text-xs opacity-90">B/J/A (Basikoa/Jakintsua/Aurreratua)</span>
+            </button>
+            
+            <button onclick="exportarAExcel()" 
+                    class="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg flex flex-col items-center justify-center transition shadow-sm">
+                <i class="fas fa-file-excel text-xl mb-2"></i>
+                <span class="font-medium">Esportatu Excel</span>
+                <span class="text-xs opacity-90">Matrize formatuan</span>
+            </button>
+            
+            <button onclick="sincronizarConOriginales()" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg flex flex-col items-center justify-center transition shadow-sm">
+                <i class="fas fa-sync-alt text-xl mb-2"></i>
+                <span class="font-medium">Sinkronizatu</span>
+                <span class="text-xs opacity-90">Eguneratu datu basea</span>
+            </button>
+        </div>
+        
+        <!-- Filtros -->
+        <div class="bg-white border border-gray-300 rounded-lg p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h4 class="font-bold text-gray-700 mb-2 flex items-center">
+                        <i class="fas fa-filter mr-2"></i>Iragazkiak
+                    </h4>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="filtrarCompetencias('')" 
+                                class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                            Guztiak
+                        </button>
+                        <button onclick="filtrarCompetencias('B')" 
+                                class="px-3 py-1.5 bg-green-100 text-green-800 rounded-lg text-sm hover:bg-green-200">
+                            Basikoak (B)
+                        </button>
+                        <button onclick="filtrarCompetencias('J')" 
+                                class="px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-lg text-sm hover:bg-yellow-200">
+                            Jakintsuak (J)
+                        </button>
+                        <button onclick="filtrarCompetencias('A')" 
+                                class="px-3 py-1.5 bg-red-100 text-red-800 rounded-lg text-sm hover:bg-red-200">
+                            Aurreratuak (A)
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="text-right">
+                    <label class="block text-sm text-gray-600 mb-1">Bilatu:</label>
+                    <input type="text" 
+                           id="buscadorCompetencias"
+                           placeholder="Bilatu kompetentzia..."
+                           class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-full md:w-64"
+                           onkeyup="buscarCompetencias(this.value)">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lista de ámbitos -->
+        <div class="space-y-4">
+    `;
+    
+    // Renderizar cada ámbito
+    eremuak.forEach((eremua, index) => {
+        const competencias = obtenerCompetenciasParaEremua(eremua);
+        const color = obtenerColorParaEremua(eremua);
+        
+        html += renderizarEremuaConCompetencias(eremua, competencias, color, index);
+    });
+    
+    html += `
+        </div>
+        
+        <!-- Pie de página -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 mt-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div>
+                    <h4 class="font-bold text-gray-700 mb-1">
+                        <i class="fas fa-info-circle mr-2"></i>Informazioa
+                    </h4>
+                    <p class="text-sm text-gray-600">
+                        Kompetentziak automatikoki gordetzen dira. Aldaketak ikasleen matrizeetan islatuko dira.
+                    </p>
+                </div>
+                <button onclick="guardarTodoCompetencias()" 
+                        class="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium">
+                    <i class="fas fa-save mr-2"></i>Gorde Datuak
+                </button>
+            </div>
+        </div>
+    </div>
+    `;
+    
+    // Insertar en el DOM
+    document.getElementById('unitsContainer').innerHTML = html;
+    document.getElementById('noUnitsMessage').classList.add('hidden');
+}
+
+// 🔥 8. RENDERIZAR UN ÁMBITO CON SUS COMPETENCIAS
+function renderizarEremuaConCompetencias(eremua, competencias, color, index) {
+    const eremuaId = eremua.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+    
+    return `
+    <div class="border border-gray-300 rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <!-- Header del ámbito -->
+        <div class="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50"
+             onclick="toggleEremua('${eremuaId}')"
+             style="border-left: 5px solid ${color}; background: ${color}10;">
+            <div class="flex items-center">
+                <div class="w-12 h-12 rounded-lg flex items-center justify-center mr-4 text-white shadow-sm"
+                     style="background: ${color};">
+                    <span class="font-bold">${index + 1}</span>
+                </div>
+                <div>
+                    <h4 class="font-bold text-gray-800 text-lg">${eremua}</h4>
+                    <div class="flex items-center space-x-4 mt-1">
+                        <span class="text-sm text-gray-600">
+                            <i class="fas fa-list-check mr-1"></i>${competencias.length} kompetentzia
+                        </span>
+                        <span class="text-sm" style="color: ${color};">
+                            <i class="fas fa-palette mr-1"></i>${obtenerEstadisticasEremua(competencias)}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="event.stopPropagation(); añadirCompetenciaAEremua('${eremua}')" 
+                        class="px-4 py-2 rounded-lg text-white font-medium hover:opacity-90 transition"
+                        style="background: ${color};">
+                    <i class="fas fa-plus mr-1"></i>Gehitu
+                </button>
+                <i class="fas fa-chevron-down text-gray-500 transition-transform" id="icono-${eremuaId}"></i>
+            </div>
+        </div>
+        
+        <!-- Contenido (inicialmente visible) -->
+        <div class="p-4 bg-white" id="contenido-${eremuaId}">
+            ${competencias.length === 0 ? renderizarSinCompetencias(eremua) : renderizarListaCompetencias(competencias, eremua, color)}
+        </div>
+    </div>
+    `;
+}
+
+// 🔥 9. RENDERIZAR LISTA DE COMPETENCIAS
+function renderizarListaCompetencias(competencias, eremua, color) {
+    let html = `<div class="space-y-3">`;
+    
+    competencias.forEach((comp, index) => {
+        const nivelColor = {
+            'B': 'bg-green-100 text-green-800 border-green-200',
+            'J': 'bg-yellow-100 text-yellow-800 border-yellow-200', 
+            'A': 'bg-red-100 text-red-800 border-red-200'
+        }[comp.nivel] || 'bg-gray-100 text-gray-800 border-gray-200';
+        
+        html += `
+        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition group" 
+             data-nivel="${comp.nivel}" 
+             data-codigo="${comp.kodea}">
+            <div class="flex items-start justify-between">
+                <!-- Columna izquierda: Código y nivel -->
+                <div class="flex-shrink-0 w-1/4">
+                    <div class="mb-2">
+                        <input type="text" 
+                               value="${comp.kodea || `SI${index + 1}`}"
+                               class="w-24 border border-gray-300 rounded px-2 py-1 text-sm font-bold"
+                               onchange="actualizarCodigoCompetencia('${eremua}', ${index}, this.value)"
+                               placeholder="Kodea">
+                    </div>
+                    <div class="mb-3">
+                        <select class="w-full border rounded px-2 py-1.5 text-sm ${nivelColor}"
+                                onchange="actualizarNivelCompetencia('${eremua}', ${index}, this.value)">
+                            <option value="B" ${comp.nivel === 'B' ? 'selected' : ''}>🔵 Basikoa (B)</option>
+                            <option value="J" ${comp.nivel === 'J' ? 'selected' : ''}>🟡 Jakintsua (J)</option>
+                            <option value="A" ${comp.nivel === 'A' ? 'selected' : ''}>🔴 Aurreratua (A)</option>
+                        </select>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        <i class="fas fa-calendar mr-1"></i>${comp.data_sartze || 'Ez dago'}
+                    </div>
+                </div>
+                
+                <!-- Columna central: Descripción -->
+                <div class="flex-grow mx-4">
+                    <textarea class="w-full border border-gray-300 rounded p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none" 
+                              rows="3"
+                              onchange="actualizarDescripcionCompetencia('${eremua}', ${index}, this.value)"
+                              placeholder="Deskribatu kompetentzia hau..."
+                              style="min-height: 80px;">${comp.deskribapena || ''}</textarea>
+                    
+                    <!-- Evidencias e instrumentos -->
+                    <div class="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-medium text-gray-600 mb-1 block">
+                                <i class="fas fa-clipboard-check mr-1"></i>Ebidentziak
+                            </label>
+                            <input type="text" 
+                                   class="w-full text-sm border border-gray-300 rounded px-3 py-2"
+                                   value="${comp.evidencias ? comp.evidencias.join(', ') : ''}"
+                                   placeholder="Portfolio, test, proiektua..."
+                                   onchange="actualizarEvidenciasCompetencia('${eremua}', ${index}, this.value)">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium text-gray-600 mb-1 block">
+                                <i class="fas fa-clipboard-list mr-1"></i>Ebaluazio tresnak
+                            </label>
+                            <input type="text" 
+                                   class="w-full text-sm border border-gray-300 rounded px-3 py-2"
+                                   value="${comp.instrumentos ? comp.instrumentos.join(', ') : ''}"
+                                   placeholder="Entrevista, azterketa, ebaluazio..."
+                                   onchange="actualizarInstrumentosCompetencia('${eremua}', ${index}, this.value)">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Columna derecha: Acciones -->
+                <div class="flex-shrink-0 ml-4">
+                    <button onclick="eliminarCompetencia('${eremua}', ${index})" 
+                            class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition"
+                            title="Ezabatu">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <div class="mt-4 text-xs text-gray-400">
+                        ${comp.egilea ? `Egilea: ${comp.egilea}` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+    
+    html += `</div>`;
+    return html;
+}
+
+// 🔥 10. RENDERIZAR SIN COMPETENCIAS
+function renderizarSinCompetencias(eremua) {
+    return `
+    <div class="text-center py-10 text-gray-400">
+        <i class="fas fa-inbox text-4xl mb-4"></i>
+        <p class="text-lg mb-2">Ez dago kompetentziarik arlo honetarako</p>
+        <p class="text-sm mb-6">Gehitu lehenengo kompetentzia ikasleek sartzeko behar dituzten gaitasunak definitzeko</p>
+        <button onclick="añadirCompetenciaAEremua('${eremua}')" 
+                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
+            <i class="fas fa-plus mr-2"></i>Gehitu Lehenengo Kompetentzia
+        </button>
+    </div>
+    `;
+}
+
+// 🔥 FUNCIONES AUXILIARES - AÑADE DESPUÉS DE LAS ANTERIORES
+
+// Obtener color para un ámbito
+function obtenerColorParaEremua(eremua) {
+    // Intentar obtener de matrices si existen
+    if (window.curriculumData.matrices && window.curriculumData.matrices.colores_eremuak) {
+        return window.curriculumData.matrices.colores_eremuak[eremua] || getDefaultColor(eremua);
+    }
+    
+    // Colores por defecto basados en hash
+    return getDefaultColor(eremua);
+}
+
+function getDefaultColor(eremua) {
+    const colors = [
+        '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+        '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+    ];
+    
+    // Crear hash simple del texto
+    let hash = 0;
+    for (let i = 0; i < eremua.length; i++) {
+        hash = eremua.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    return colors[Math.abs(hash) % colors.length];
+}
+
+// Obtener competencias para un ámbito
+function obtenerCompetenciasParaEremua(eremua) {
+    if (!window.curriculumData.kompetentziak_ingreso_mejorado) {
+        return [];
+    }
+    
+    return window.curriculumData.kompetentziak_ingreso_mejorado.competencias_por_eremua[eremua] || [];
+}
+
+// Contar competencias totales
+function contarCompetenciasTotales() {
+    if (!window.curriculumData.kompetentziak_ingreso_mejorado) {
+        return 0;
+    }
+    
+    let total = 0;
+    Object.values(window.curriculumData.kompetentziak_ingreso_mejorado.competencias_por_eremua).forEach(arr => {
+        total += arr.length;
+    });
+    
+    return total;
+}
+
+// Obtener estadísticas de un ámbito
+function obtenerEstadisticasEremua(competencias) {
+    const niveles = { B: 0, J: 0, A: 0 };
+    
+    competencias.forEach(comp => {
+        if (comp.nivel && niveles[comp.nivel] !== undefined) {
+            niveles[comp.nivel]++;
+        }
+    });
+    
+    return `${niveles.B}B ${niveles.J}J ${niveles.A}A`;
+}
+
+// Obtener grados del curriculum
+function obtenerGradosDelCurriculum() {
+    if (!window.curriculumData) return [];
+    
+    return Object.keys(window.curriculumData).filter(grado => 
+        !grado.includes('kompetentziak') && 
+        grado !== '_metadata' &&
+        typeof window.curriculumData[grado] === 'object'
+    );
+}
+
         // ALDATU DOMContentLoaded:
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOM Cargado - Inicialización segura');
@@ -3219,6 +3898,7 @@ function actualizarEstadisticasMatrices() {
             }
                     })();
  
+
 
 
 
