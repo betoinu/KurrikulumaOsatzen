@@ -1,4 +1,3 @@
-
 // app.js - INICIO DEL ARCHIVO
 console.log('🔍 Verificando dependencias...');
 
@@ -2503,6 +2502,7 @@ window.setupEventListeners = function() {
             }
                     })();
  
+
 
 
 
