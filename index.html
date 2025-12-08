@@ -811,6 +811,9 @@ window.setupEventListeners = function() {
                     window.curriculumData = data[0].curriculum;
                     console.log('✅ Datuak kargatuak Supabase-tik');
                     
+                    // 🔥 VERIFICAR ESTRUCTURA DESPUÉS DE CARGAR
+                    setTimeout(verificarEstructuraDatos, 800);
+                    
                     // UI eguneratu (soilik nabigazioa)
                     document.getElementById('noDataMessage').classList.add('hidden');
                     document.getElementById('navigationPanel').classList.remove('hidden');
@@ -1481,6 +1484,12 @@ window.setupEventListeners = function() {
                 
                 // 🔥 NORMALIZAR Y MIGRAR
                 window.curriculumData = window.normalizeData(parsedData);
+
+                // 🔥 AÑADE ESTO DESPUÉS DE normalizeData:
+                setTimeout(verificarEstructuraDatos, 800);
+                
+                // UI eguneratu
+                document.getElementById('loadingOverlay').classList.add('hidden');
                 
                 // Verificar migración
                 const tieneCompetencias = window.curriculumData.kompetentziak_ingreso !== undefined &&
@@ -2260,25 +2269,3 @@ window.setupEventListeners = function() {
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
