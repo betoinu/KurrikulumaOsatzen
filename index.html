@@ -299,7 +299,25 @@
         // Supabase hasieratu
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         // Después de: const supabase = window.supabase.createClient(...);
-
+            // 🔥 PROTEJER SUPABASE DE TAC
+        const originalSupabaseAuth = supabase.auth;
+        
+        // Interceptar llamadas a Supabase Auth
+        Object.keys(originalSupabaseAuth).forEach(key => {
+            if (typeof originalSupabaseAuth[key] === 'function') {
+                supabase.auth[key] = function(...args) {
+                    console.log('🔒 Supabase Auth llamado:', key);
+                    
+                    // Verificar que no haya TAC activo
+                    if (window.TAC_INJECTED) {
+                        console.error('🚨 TAC DETECTADO - Bloqueando Supabase');
+                        return Promise.reject(new Error('TAC interference detected'));
+                    }
+                    
+                    return originalSupabaseAuth[key].apply(this, args);
+                };
+            }
+        });
         // Detectar si hay sesión en la URL (después de redirección de Google)
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         if (hashParams.has('access_token') || hashParams.has('error')) {
@@ -308,7 +326,7 @@
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-let authInitialized = false;
+let Initialized = false;
 let authCheckInProgress = false; // 🔥 NUEVO: Evitar múltiples ejecuciones simultáneas
 
 supabase.auth.onAuthStateChange(async (event, session) => {
@@ -1337,215 +1355,249 @@ window.setupEventListeners = function() {
         }); 
     </script>
         <script>
-    // 🛡️ BLOQUEADOR TAC/ADS - BERSIO HOBETUA ETA SEGURUA
+    // 🛡️ BLOQUEADOR TAC/ADS - VERSIÓN SUPER AGRESIVA
     (function() {
-        'use strict';  // Modu segurua aktibatu
+        'use strict';
         
-        console.log('🛡️ BLOQUEADOR HOBETUA - Inicializando protección...');
+        console.log('🛡️ BLOQUEADOR TAC - MODO AGGRESIVO ACTIVADO');
         
-        // 🔥 1. LEHENENGO: DOM EDO CONSOLEN ERABILERA BLOKEATU
-        const originalConsoleWarn = console.warn;
-        const originalConsoleError = console.error;
+        // 🔥 1. INTERCEPTAR Y BLOQUEAR TAC ANTES DE QUE SE EJECUTE
+        const originalAppendChild = Element.prototype.appendChild;
+        const originalInsertBefore = Node.prototype.insertBefore;
+        const originalSetAttribute = Element.prototype.setAttribute;
         
-        console.warn = function(...args) {
-            // TAC mezuak isildu
-            if (args[0] && typeof args[0] === 'string' && 
-                (args[0].includes('TAC') || args[0].includes('tac') || args[0].includes('content-v2'))) {
-                return; // Ez erakutsi
-            }
-            originalConsoleWarn.apply(console, args);
-        };
+        // Lista negra COMPLETA de TAC
+        const TAC_BLACKLIST = [
+            'tac', 'TAC', 'content-v2', 'floater', 'ad-container',
+            'ad-script', 'ad-loader', 'ad-frame', 'tac-container',
+            'tac-floater', 'tac-icon', 'ad-icon'
+        ];
         
-        console.error = function(...args) {
-            // TAC erroreak isildu
-            if (args[0] && typeof args[0] === 'string' && 
-                (args[0].includes('TAC') || args[0].includes('tac') || args[0].includes('content-v2'))) {
-                return; // Ez erakutsi
-            }
-            originalConsoleError.apply(console, args);
-        };
-        
-        // 🔥 2. SCRIPT SORTZE PREBENTZIOA (GEHIEN ERAGINKORRA)
-        const originalCreateElement = document.createElement;
-        document.createElement = function(tagName, options) {
-            const element = originalCreateElement.call(document, tagName, options);
-            
-            // Script berria bada
-            if (tagName.toLowerCase() === 'script') {
-                // Src propietatea kontrolatu
-                let srcValue = '';
-                
-                Object.defineProperty(element, 'src', {
-                    set: function(value) {
-                        // TAC script-ak blokeatu
-                        if (value && (value.includes('content-v2') || 
-                                      value.includes('tac') || 
-                                      value.includes('/tac/'))) {
-                            console.log('🚫 Script TAC prevenido (src):', value.substring(0, 50));
-                            srcValue = '';
-                            return;
-                        }
-                        srcValue = value;
-                        element.setAttribute('src', value || '');
-                    },
-                    get: function() {
-                        return srcValue;
-                    },
-                    configurable: true
-                });
-                
-                // TextContent propietatea kontrolatu
-                let textValue = '';
-                Object.defineProperty(element, 'textContent', {
-                    set: function(value) {
-                        // TAC kodea blokeatu
-                        if (value && (value.includes('TAC') || 
-                                      value.includes('tac-Floater') || 
-                                      value.includes('tac-Container'))) {
-                            console.log('🚫 Script TAC prevenido (inline):', value.substring(0, 50));
-                            textValue = '';
-                            return;
-                        }
-                        textValue = value;
-                        element.textContent = value;
-                    },
-                    get: function() {
-                        return textValue;
-                    },
-                    configurable: true
-                });
-            }
-            
-            return element;
-        };
-        
-        // 🔥 3. APPEND/INSERT PREBENTZIOA
-        const originalAppendChild = Node.prototype.appendChild;
-        Node.prototype.appendChild = function(child) {
-            // Script elementuak blokeatu
-            if (child.tagName === 'SCRIPT') {
+        // 🔥 2. BLOQUEAR APPENDCHILD
+        Element.prototype.appendChild = function(child) {
+            if (child && child.tagName) {
+                const tag = child.tagName.toLowerCase();
                 const src = child.src || '';
-                const text = child.textContent || '';
+                const className = child.className || '';
+                const id = child.id || '';
+                const innerHTML = child.innerHTML || '';
                 
-                if (src.includes('content-v2') || src.includes('tac') ||
-                    text.includes('TAC') || text.includes('tac-Floater')) {
-                    console.log('🚫 Script TAC eliminado en appendChild');
-                    return child; // Ez gehitu
+                // BLOQUEAR TAC en CUALQUIER elemento
+                const isTAC = TAC_BLACKLIST.some(keyword => 
+                    src.includes(keyword) || 
+                    className.includes(keyword) ||
+                    id.includes(keyword) ||
+                    innerHTML.includes(keyword) ||
+                    child.textContent?.includes(keyword)
+                );
+                
+                if (isTAC) {
+                    console.log('🚫 TAC BLOQUEADO en appendChild:', {tag, src, className});
+                    return child; // No añadir al DOM
                 }
             }
-            
-            // TAC klaseak dituzten elementuak blokeatu
-            if (child.className && 
-                (child.className.includes('tac') || child.id && child.id.includes('tac'))) {
-                console.log('🚫 Elemento TAC eliminado en appendChild');
-                return child; // Ez gehitu
-            }
-            
             return originalAppendChild.call(this, child);
         };
         
-        // 🔥 4. MUTATION OBSERVER SEGURUA
-        function setupSecureObserver() {
-            try {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        mutation.addedNodes.forEach((node) => {
-                            // Script berriak
-                            if (node.tagName === 'SCRIPT') {
-                                const src = node.src || '';
-                                const text = node.textContent || '';
-                                
-                                if (src.includes('content-v2') || src.includes('tac') ||
-                                    text.includes('TAC') || text.includes('tac-Floater')) {
-                                    console.log('👀 Script TAC detectado y eliminado');
-                                    node.remove();
-                                }
-                            }
-                            
-                            // TAC elementuak
-                            if (node.nodeType === 1) { // Element node
-                                const className = node.className || '';
-                                const id = node.id || '';
-                                
-                                if (className.includes('tac') || id.includes('tac')) {
-                                    console.log('👀 Elemento TAC detectado y eliminado');
-                                    node.remove();
-                                }
-                                
-                                // Barneko elementuak ere begiratu
-                                if (node.querySelectorAll) {
-                                    node.querySelectorAll('[class*="tac"], [id*="tac"]').forEach(el => {
-                                        console.log('👀 Elemento TAC interno eliminado');
-                                        el.remove();
-                                    });
-                                }
-                            }
-                        });
-                    });
-                });
+        // 🔥 3. BLOQUEAR INSERTBEFORE
+        Node.prototype.insertBefore = function(newNode, referenceNode) {
+            if (newNode && newNode.tagName) {
+                const src = newNode.src || '';
+                const className = newNode.className || '';
+                const id = newNode.id || '';
                 
-                observer.observe(document.documentElement, {
-                    childList: true,
-                    subtree: true,
-                    attributes: false,
-                    characterData: false
-                });
+                const isTAC = TAC_BLACKLIST.some(keyword => 
+                    src.includes(keyword) || 
+                    className.includes(keyword) ||
+                    id.includes(keyword)
+                );
                 
-                return observer;
-            } catch (e) {
-                console.error('❌ Error en observador:', e);
-                return null;
+                if (isTAC) {
+                    console.log('🚫 TAC BLOQUEADO en insertBefore:', newNode.tagName);
+                    return newNode;
+                }
             }
-        }
+            return originalInsertBefore.call(this, newNode, referenceNode);
+        };
         
-        // 🔥 5. SCRIPT EZABATZE PERIODIKOA (BACKUP)
-        function periodicCleanup() {
-            // Script TAC guztiak
+        // 🔥 4. BLOQUEAR SETATTRIBUTE (para scripts dinámicos)
+        Element.prototype.setAttribute = function(name, value) {
+            if (name === 'src' && value) {
+                const isTAC = TAC_BLACKLIST.some(keyword => 
+                    value.includes(keyword)
+                );
+                
+                if (isTAC) {
+                    console.log('🚫 TAC BLOQUEADO en setAttribute:', value);
+                    return; // No establecer el atributo
+                }
+            }
+            return originalSetAttribute.call(this, name, value);
+        };
+        
+        // 🔥 5. BLOQUEAR DOCUMENT.WRITE (TAC lo usa)
+        document.write = function() {
+            const content = Array.from(arguments).join('');
+            if (TAC_BLACKLIST.some(keyword => content.includes(keyword))) {
+                console.log('🚫 TAC BLOQUEADO en document.write');
+                return;
+            }
+            console.warn('⚠️ document.write bloqueado por seguridad');
+        };
+        
+        // 🔥 6. OBSERVADOR DE MUTACIONES HIPER-AGRESIVO
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1) { // Element node
+                        // BLOQUEAR SCRIPTS TAC
+                        if (node.tagName === 'SCRIPT') {
+                            const src = node.src || '';
+                            const text = node.textContent || '';
+                            const isTAC = TAC_BLACKLIST.some(keyword => 
+                                src.includes(keyword) || text.includes(keyword)
+                            );
+                            
+                            if (isTAC) {
+                                console.log('👀 TAC SCRIPT detectado y ELIMINADO:', src.substring(0, 50));
+                                node.remove();
+                                return;
+                            }
+                        }
+                        
+                        // BLOQUEAR ELEMENTOS TAC
+                        const className = node.className || '';
+                        const id = node.id || '';
+                        const isTAC = TAC_BLACKLIST.some(keyword => 
+                            className.includes(keyword) || id.includes(keyword)
+                        );
+                        
+                        if (isTAC) {
+                            console.log('👀 ELEMENTO TAC detectado y ELIMINADO:', node.tagName);
+                            node.remove();
+                            return;
+                        }
+                        
+                        // BUSCAR Y ELIMINAR TAC DENTRO DEL ELEMENTO
+                        if (node.querySelectorAll) {
+                            node.querySelectorAll('script, div, span, iframe').forEach(el => {
+                                const elSrc = el.src || '';
+                                const elClass = el.className || '';
+                                const elId = el.id || '';
+                                
+                                if (TAC_BLACKLIST.some(keyword => 
+                                    elSrc.includes(keyword) || 
+                                    elClass.includes(keyword) || 
+                                    elId.includes(keyword))) {
+                                    console.log('👀 TAC INTERNO eliminado');
+                                    el.remove();
+                                }
+                            });
+                        }
+                    }
+                });
+            });
+        });
+        
+        // 🔥 7. CONFIGURAR OBSERVADOR (OBSERVA TODO)
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['src', 'class', 'id']
+        });
+        
+        // 🔥 8. LIMPIEZA INICIAL INMEDIATA
+        function cleanTACImmediately() {
+            console.log('🧹 Limpieza inicial de TAC...');
+            
+            // Eliminar SCRIPTS TAC
             document.querySelectorAll('script').forEach(script => {
                 const src = script.src || '';
                 const text = script.textContent || '';
-                
-                if (src.includes('content-v2') || src.includes('tac') ||
-                    text.includes('TAC') || text.includes('tac-Floater')) {
-                    console.log('🗑️ Script TAC eliminado en limpieza periódica');
+                if (TAC_BLACKLIST.some(keyword => 
+                    src.includes(keyword) || text.includes(keyword))) {
+                    console.log('🗑️ SCRIPT TAC eliminado inicialmente');
                     script.remove();
                 }
             });
             
-            // Elemento TAC guztiak
-            document.querySelectorAll('[class*="tac"], [id*="tac"], .tac-Floater-icon').forEach(el => {
-                console.log('🗑️ Elemento TAC eliminado en limpieza periódica');
-                el.remove();
+            // Eliminar ELEMENTOS TAC
+            TAC_BLACKLIST.forEach(keyword => {
+                document.querySelectorAll(`[class*="${keyword}"], [id*="${keyword}"]`).forEach(el => {
+                    console.log('🗑️ ELEMENTO TAC eliminado inicialmente');
+                    el.remove();
+                });
             });
+            
+            // PROTEGER LOCALSTORAGE de TAC
+            const originalSetItem = Storage.prototype.setItem;
+            Storage.prototype.setItem = function(key, value) {
+                if (TAC_BLACKLIST.some(keyword => 
+                    key.includes(keyword) || value.includes(keyword))) {
+                    console.log('🔒 TAC bloqueado en localStorage:', key);
+                    return;
+                }
+                return originalSetItem.call(this, key, value);
+            };
         }
         
-        // 🔥 6. EXEKUTATZEKO FUNTZIOA
-        function initBlocker() {
-            console.log('✅ BLOQUEADOR HOBETUA - Iniciando...');
-            
-            // 1. Observerra konfiguratu
-            setupSecureObserver();
-            
-            // 2. Lehenengo garbiketa
-            setTimeout(periodicCleanup, 100);
-            
-            // 3. Garbiketa periodikoa (segundoro)
-            setInterval(periodicCleanup, 1000);
-            
-            console.log('🛡️ BLOQUEADOR HOBETUA - Configurado y activo');
-        }
-        
-        // 🔥 7. ABIARAZI (DOM prest dagoenean)
+        // 🔥 9. EJECUTAR INMEDIATAMENTE
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initBlocker);
+            document.addEventListener('DOMContentLoaded', cleanTACImmediately);
         } else {
-            initBlocker();
+            cleanTACImmediately();
         }
         
+        // 🔥 10. LIMPIEZA PERIÓDICA (cada 500ms)
+        setInterval(cleanTACImmediately, 500);
+        
+        console.log('✅ BLOQUEADOR TAC AGGRESIVO ACTIVADO');
     })();
+        async function verifySupabaseSession() {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session) {
+                console.log('✅ Sesión Supabase VERIFICADA:', session.user.email);
+                
+                // Forzar setUILoginState SI hay sesión
+                setTimeout(() => {
+                    if (typeof setUILoginState === 'function') {
+                        setUILoginState(true, session.user);
+                    }
+                    if (typeof loadCurriculumData === 'function' && !window.curriculumData) {
+                        loadCurriculumData();
+                    }
+                }, 1000);
+            } else {
+                console.log('❌ NO hay sesión Supabase - TAC probablemente la eliminó');
+                
+                // Intentar recuperar desde localStorage
+                const supabaseKey = Object.keys(localStorage).find(key => 
+                    key.includes('supabase') && key.includes('auth-token')
+                );
+                
+                if (supabaseKey) {
+                    console.log('🔍 Token encontrado en localStorage, intentando recuperar...');
+                    // Forzar recarga limpia
+                    setTimeout(() => {
+                        window.location.href = window.location.origin + window.location.pathname + '?clean=1';
+                    }, 2000);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error verificando sesión:', error);
+        }
+    }
+    
+    // Llamar después de 3 segundos
+    setTimeout(verifySupabaseSession, 3000);
+    // ========== FIN DEL CÓDIGO A AÑADIR ==========
     </script>
 </body>
 </html>
+
 
 
 
