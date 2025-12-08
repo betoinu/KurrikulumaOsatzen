@@ -3,12 +3,43 @@
 // ============================================
 // 1. CONFIGURACIÓN Y VARIABLES GLOBALES
 // ============================================   
-// Supabase konfigurazioa - config.js fitxategitik kargatuko da
-const SUPABASE_URL = window.SUPABASE_URL;
-const SUPABASE_KEY = window.SUPABASE_KEY;
+// Variable global para Supabase (NO CONST, usar let)
+let supabase = null;
+
+// Función para inicializar Supabase de forma segura
+function inicializarSupabase() {
+    console.log('🔧 Inicializando Supabase...');
     
-// Supabase hasieratu
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // 1. Verificar que config.js se cargó
+    if (!window.SUPABASE_URL || !window.SUPABASE_KEY) {
+        console.error('❌ ERROR CRÍTICO: Variables de Supabase no definidas');
+        console.error('   Razón: config.js no se cargó antes que app.js');
+        console.error('   Solución: Verificar orden de scripts en index.html');
+        return false;
+    }
+    
+    // 2. Verificar que la librería Supabase esté disponible
+    if (typeof window.supabase === 'undefined') {
+        console.error('❌ ERROR: Librería Supabase no cargada');
+        console.error('   Razón: CDN de Supabase no se cargó');
+        return false;
+    }
+    
+    try {
+        // 3. Crear cliente de Supabase
+        supabase = window.supabase.createClient(
+            window.SUPABASE_URL, 
+            window.SUPABASE_KEY
+        );
+        
+        console.log('✅ Supabase inicializado correctamente');
+        console.log('   URL:', window.SUPABASE_URL.substring(0, 30) + '...');
+        return true;
+    } catch (error) {
+        console.error('❌ ERROR creando cliente Supabase:', error);
+        return false;
+    }
+}
 // Detectar si hay sesión en la URL (después de redirección de Google)
 
 let authEventCount = 0;
@@ -2121,7 +2152,26 @@ window.setupEventListeners = function() {
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOM Cargado - Inicialización segura');
             
-            // 1. Ocultar loading overlay
+            // 🔥 NUEVO: 1. INICIALIZAR SUPABASE PRIMERO
+            if (!inicializarSupabase()) {
+                // ERROR CRÍTICO: Mostrar mensaje y detener
+                const loading = document.getElementById('loadingOverlay');
+                if (loading) {
+                    loading.innerHTML = `
+                        <div class="bg-red-50 p-6 rounded-lg max-w-md">
+                            <h3 class="text-red-800 font-bold text-lg mb-2">❌ Error de Configuración</h3>
+                            <p class="text-red-600 mb-4">No se pudo conectar a la base de datos.</p>
+                            <button onclick="window.location.reload()" 
+                                    class="bg-red-600 text-white px-4 py-2 rounded">
+                                Recargar Página
+                            </button>
+                        </div>
+                    `;
+                }
+                return; // ⚠️ DETENER la ejecución si Supabase falla
+            }
+            
+            // 2. Ocultar loading overlay
             const loading = document.getElementById('loadingOverlay');
             if (loading) {
                 setTimeout(() => {
@@ -2129,13 +2179,13 @@ window.setupEventListeners = function() {
                 }, 1000);
             }
             
-            // 2. Verificar logout SOLO si hay parámetro
+            // 3. Verificar logout SOLO si hay parámetro
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('logout')) {
                 console.log('⚠️ URL tiene parámetro logout - procesando...');
                 handleLogoutFromUrl();
             } else {
-                // 3. Si NO hay logout, verificar sesión existente
+                // 4. Si NO hay logout, verificar sesión existente
                 console.log('🔍 Verificando sesión existente...');
                 supabase.auth.getSession().then(({ data: { session } }) => {
                     if (session) {
@@ -2148,19 +2198,19 @@ window.setupEventListeners = function() {
                 });
             }
             
-            // 4. Configurar event listeners
+            // 5. Configurar event listeners
             if (typeof setupEventListeners === 'function') {
                 setupEventListeners();
             }
             
-            // 5. WebSocket con delay (evitar conflictos)
+            // 6. WebSocket con delay (evitar conflictos)
             setTimeout(() => {
                 if (typeof setupRealtimeUpdates === 'function') {
                     console.log('🔌 Conectando WebSocket...');
                     setupRealtimeUpdates();
                 }
             }, 2000);
-        }); 
+        });
 
     // 🛡️ BLOQUEADOR TAC/ADS - VERSIÓN SUPER AGRESIVA
     (function() {
@@ -2411,6 +2461,7 @@ window.setupEventListeners = function() {
             }
                     })();
  
+
 
 
 
