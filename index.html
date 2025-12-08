@@ -71,26 +71,17 @@
             });
         };
         
-        // 2. Bloquear creación dinámica
-        const originalCreateElement = document.createElement;
-        document.createElement = function(tagName) {
-            const element = originalCreateElement.call(this, tagName);
-            
-            if (tagName.toLowerCase() === 'script') {
-                const originalSetAttribute = element.setAttribute;
-                element.setAttribute = function(name, value) {
-                    if (name === 'src' && value && 
-                        (value.includes('content-v2') || value.includes('tac') || value.includes('/ads/'))) {
-                        console.log('🚫 Previniendo creación de script malicioso:', value);
-                        // Devuelve el elemento pero evita que se ejecute
-                        element._blocked = true;
-                        return;
-                    }
-                    return originalSetAttribute.call(this, name, value);
-                };
+        // 2. Bloquear creación dinámica de scripts en el head
+        const originalAppendChild = document.head.appendChild;
+        document.head.appendChild = function(element) {
+            if (element.tagName === 'SCRIPT' && element.src) {
+                if (element.src.includes('content-v2') || element.src.includes('tac') || element.src.includes('/ads/')) {
+                    console.log('🚫 Previniendo creación de script malicioso en head:', element.src);
+                    // Devuelve el elemento pero no lo añade
+                    return element;
+                }
             }
-            
-            return element;
+            return originalAppendChild.call(this, element);
         };
         
         // 3. Bloquear fetch/XHR
@@ -109,7 +100,7 @@
         removeTACScripts();
         setInterval(removeTACScripts, 2000);
         
-        // 5. Observar DOM para nuevos scripts
+        // 5. Observar DOM para nuevos scripts (MutationObserver)
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
@@ -505,7 +496,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
             
             // UI elementuak reset
             document.getElementById('degreeSelect').innerHTML = '<option value="">-- Aukeratu Gradua --</option>';
-            document.getElementById('yearButtons').innerHTML = '';
+            document.getElementById('sectionButtons').innerHTML = '';
             document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Saioa hasi behar duzu...</li>';
         }
                
@@ -1347,39 +1338,43 @@ supabase.auth.onAuthStateChange(async (event, session) => {
         // Event listenerrak gehitu
                 // Event listenerrak gehitu
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('=== CURRICULUM APP STARTING ===');
+            console.log('🚀 CURRICULUM APP STARTING...');
             
-            // 1️⃣ Lehenengo eta behin: Logout detektatu
+            // 1️⃣ LEHENENGO: EZABATU updateUI() deialdi guztiak
+            // ❌ EZ EGIN HAU: checkSupabaseStatus() → updateUI() deitzen du
+            
+            // 2️⃣ Soilik oinarrizkoa konfiguratu
             handleLogoutFromUrl();
             
-            // 2️⃣ Supabase konprobatu (baina ez UI eguneratu)
-            console.log('🔍 Supabase egoera konprobatzen...');
+            // 3️⃣ Supabase konprobatu soilik (ez UI eguneratu)
+            console.log('🔍 Supabase konprobatzen...');
             const { data: { user } } = await supabase.auth.getUser();
             
-            if (!user) {
-                // 3️⃣ Ez dago saiorik → UI oinarrizkoa erakutsi
-                resetUIForLoggedOut();
-                document.getElementById('loadingOverlay').classList.add('hidden');
-                return;
-            }
-            
-            // 4️⃣ Badago saioa → UI eguneratu
-            await updateUI();
-            
-            // 5️⃣ ONDOREN bakarrik kargatu datuak
             if (user && isValidEmail(user.email)) {
-                await loadCurriculumData();
+                console.log('✅ Erabiltzailea dago: ' + user.email);
+                // Supabase-k eguneratuko du UI-a onAuthStateChange-en
+            } else {
+                console.log('🔓 Saioa itxita');
+                // UI oinarrizkoa erakutsi
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                document.getElementById('signInBtn').classList.remove('hidden');
+                document.getElementById('noDataMessage').classList.remove('hidden');
             }
             
-            // 6️⃣ Azkenik: Denbora errealeko eguneraketak
+            // 4️⃣ Event listenerrak bakarrik (EZ datuak kargatu)
+            setupEventListeners();
+            
+            // 5️⃣ Denbora errealeko eguneraketak (geroago)
             setTimeout(() => {
                 setupRealtimeUpdates();
             }, 1000);
+            
+            console.log('✅ App hasieratuta - Supabase-k maneiatuko du auth');
         });
-        console.log('✅ Supabase kodea ondo kargatu da');
     </script>
 </body>
 </html>
+
 
 
 
