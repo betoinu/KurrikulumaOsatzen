@@ -2194,23 +2194,27 @@ window.setupEventListeners = function() {
             console.log('🚀 DOM Cargado - Inicialización segura');
             
             // 🔥 NUEVO: 1. INICIALIZAR SUPABASE PRIMERO
-  /*          if (!inicializarSupabase()) {
-                // ERROR CRÍTICO: Mostrar mensaje y detener
+            if (!window.supabase || !window.supabase.auth) {
+                console.error('❌ Supabase no está listo');
+                
+                // Mostrar error solo si realmente hay problema
                 const loading = document.getElementById('loadingOverlay');
-                if (loading) {
+                if (loading && !window.supabase) {
                     loading.innerHTML = `
                         <div class="bg-red-50 p-6 rounded-lg max-w-md">
-                            <h3 class="text-red-800 font-bold text-lg mb-2">❌ Error de Configuración</h3>
-                            <p class="text-red-600 mb-4">No se pudo conectar a la base de datos.</p>
+                            <h3 class="text-red-800 font-bold text-lg mb-2">⚠️ Error de Conexión</h3>
+                            <p class="text-red-600 mb-4">Revisa tu conexión a internet.</p>
                             <button onclick="window.location.reload()" 
                                     class="bg-red-600 text-white px-4 py-2 rounded">
                                 Recargar Página
                             </button>
                         </div>
                     `;
+                    return;
                 }
-                return; // ⚠️ DETENER la ejecución si Supabase falla
-            }  */
+            }
+            
+            console.log('✅ Supabase verificado, continuando...');
             
             // 2. Ocultar loading overlay
             const loading = document.getElementById('loadingOverlay');
@@ -2502,6 +2506,7 @@ window.setupEventListeners = function() {
             }
                     })();
  
+
 
 
 
