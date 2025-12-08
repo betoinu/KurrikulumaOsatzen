@@ -1350,6 +1350,23 @@ window.setupEventListeners = function() {
         
         console.log('🛡️ BLOQUEADOR TAC - MODO AGGRESIVO ACTIVADO');
         
+       // 🛡️ PROTEGER LOCALSTORAGE DE TAC
+        const originalSetItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function(key, value) {
+            // BLOQUEAR cualquier dato TAC
+            if (typeof key === 'string' && typeof value === 'string') {
+                const isTAC = key.includes('tac') || key.includes('TAC') || 
+                             key.includes('content-v2') || value.includes('tac');
+                
+                if (isTAC) {
+                    console.log('🔒 TAC BLOQUEADO en localStorage:', key.substring(0, 50));
+                    return; // No guardar
+                }
+            }
+            
+            return originalSetItem.call(this, key, value);
+        };
+        
         // 🔥 1. INTERCEPTAR Y BLOQUEAR TAC ANTES DE QUE SE EJECUTE
         const originalAppendChild = Element.prototype.appendChild;
         const originalInsertBefore = Node.prototype.insertBefore;
@@ -1546,6 +1563,7 @@ window.setupEventListeners = function() {
     </script>
 </body>
 </html>
+
 
 
 
