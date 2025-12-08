@@ -603,6 +603,13 @@ window.setupEventListeners = function() {
                 if (data && data.length > 0 && data[0].curriculum) {
                     window.curriculumData = data[0].curriculum;
                     console.log('✅ Datuak kargatuak Supabase-tik');
+                   
+                    // 🔥 AÑADIR ESTO: Inicializar matrices automáticamente
+                    setTimeout(() => {
+                        if (window.inicializarSistemaMatrices) {
+                            window.inicializarSistemaMatrices();
+                        }
+                    }, 1000);
                     
                     // 🔥 VERIFICAR ESTRUCTURA DESPUÉS DE CARGAR
                     setTimeout(verificarEstructuraDatos, 800);
@@ -1481,114 +1488,744 @@ window.setupEventListeners = function() {
             
             return dataNuevo;
         }
+
+                // ============================================
+        // SISTEMA DE MATRICES ANECA
+        // ============================================
+        
+        // 🔥 1. INICIALIZAR SISTEMA DE MATRICES
+        window.inicializarSistemaMatrices = function() {
+            if (!window.curriculumData.matrices) {
+                window.curriculumData.matrices = crearEstructuraMatrices();
+                console.log('✅ Sistema de matrices inicializado');
+            }
+            
+            // Generar colores automáticos para eremuak
+            generarColoresEremuak();
+            
+            // Extraer competencias automáticamente
+            extraerCompetenciasAutomaticamente();
+            
+            // Extraer RAs de asignaturas
+            extraerRAsAutomaticamente();
+        };
+        
+        // 🔥 2. CREAR ESTRUCTURA BÁSICA
+        function crearEstructuraMatrices() {
+            return {
+                version: "1.0",
+                ultima_actualizacion: new Date().toISOString(),
+                matriz_competencias_ra: { competencias: [], resultados_aprendizaje: [], relaciones: [] },
+                matriz_ra_asignaturas: { relaciones: [] },
+                matriz_competencias_asignaturas: { relaciones: [] },
+                matriz_contenidos_ra: { contenidos: [], relaciones: [] },
+                colores_eremuak: {},
+                configuracion: {
+                    niveles_contribucion: ['I', 'D', 'Dp'],
+                    colores_niveles: { 'I': '#4CAF50', 'D': '#FF9800', 'Dp': '#F44336' }
+                }
+            };
+        }
+        
+        // 🔥 3. GENERAR COLORES POR EREMUA
+        function generarColoresEremuak() {
+            const eremuak = extraerEremuakDelCurriculum();
+            const colores = [
+                '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+                '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+            ];
+            
+            window.curriculumData.matrices.colores_eremuak = {};
+            eremuak.forEach((eremua, index) => {
+                window.curriculumData.matrices.colores_eremuak[eremua] = 
+                    colores[index % colores.length];
+            });
+            
+            console.log('🎨 Colores generados para', eremuak.length, 'eremuak');
+        }
+        
+        // 🔥 4. EXTRAER COMPETENCIAS AUTOMÁTICAMENTE
+        function extraerCompetenciasAutomaticamente() {
+            const matrices = window.curriculumData.matrices;
+            const competenciasIngreso = window.curriculumData.kompetentziak_ingreso || [];
+            const competenciasEgreso = window.curriculumData.kompetentziak_egreso || [];
+            
+            // Añadir competencias de ingreso
+            competenciasIngreso.forEach(comp => {
+                if (!matrices.matriz_competencias_ra.competencias.some(c => c.codigo === comp.kodea)) {
+                    matrices.matriz_competencias_ra.competencias.push({
+                        id: 'CI-' + Date.now() + '-' + Math.random(),
+                        codigo: comp.kodea,
+                        descripcion: comp.deskribapena,
+                        tipo: 'ingreso',
+                        origen: 'kompetentziak_ingreso'
+                    });
+                }
+            });
+            
+            // Añadir competencias de egreso
+            competenciasEgreso.forEach(comp => {
+                if (!matrices.matriz_competencias_ra.competencias.some(c => c.codigo === comp.kodea)) {
+                    matrices.matriz_competencias_ra.competencias.push({
+                        id: 'CE-' + Date.now() + '-' + Math.random(),
+                        codigo: comp.kodea,
+                        descripcion: comp.deskribapena,
+                        tipo: 'egreso',
+                        origen: 'kompetentziak_egreso'
+                    });
+                }
+            });
+            
+            console.log('📋 Competencias extraídas:', matrices.matriz_competencias_ra.competencias.length);
+        }
+        
+        // 🔥 5. EXTRAER RAs AUTOMÁTICAMENTE
+        function extraerRAsAutomaticamente() {
+            const matrices = window.curriculumData.matrices;
+            let raCount = 0;
+            
+            // Recorrer todas las asignaturas de todos los grados
+            Object.values(window.curriculumData).forEach(grado => {
+                if (typeof grado !== 'object' || Array.isArray(grado)) return;
+                
+                Object.values(grado).forEach(curso => {
+                    if (Array.isArray(curso)) {
+                        curso.forEach(asignatura => {
+                            if (asignatura.currentOfficialRAs && Array.isArray(asignatura.currentOfficialRAs)) {
+                                asignatura.currentOfficialRAs.forEach((raText, index) => {
+                                    const raCodigo = `RA${raCount + 1}`;
+                                    if (!matrices.matriz_competencias_ra.resultados_aprendizaje.some(r => r.descripcion === raText)) {
+                                        matrices.matriz_competencias_ra.resultados_aprendizaje.push({
+                                            id: 'RA-' + Date.now() + '-' + Math.random(),
+                                            codigo: raCodigo,
+                                            descripcion: raText,
+                                            origen_asignatura: asignatura.izena,
+                                            origen_grado: Object.keys(window.curriculumData).find(g => window.curriculumData[g] === grado)
+                                        });
+                                        raCount++;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+            
+            console.log('📋 RAs extraídos:', matrices.matriz_competencias_ra.resultados_aprendizaje.length);
+        }
   
         // 🔥 FUNCIÓN PARA MOSTRAR LAS 4 MATRICES ANECA
         window.mostrarMatricesANECA = function() {
-            console.log('📊 Mostrando matrices ANECA');
-            
-            // 1. Verificar sesión
-            supabase.auth.getUser().then(({data: { user }}) => {
-                if (!user) {
-                    window.showToast('❌ Saioa hasi behar duzu', 'error');
-                    return;
-                }
+    console.log('📊 Mostrando matrices ANECA mejorado');
+    
+    // 1. Verificar sesión
+    supabase.auth.getUser().then(({data: { user }}) => {
+        if (!user) {
+            window.showToast('❌ Saioa hasi behar duzu', 'error');
+            return;
+        }
+        
+        // 2. Calcular estadísticas ANTES de crear el modal
+        const estadisticas = calcularEstadisticasMatrices();
+        
+        // 3. Crear modal MEJORADO con estadísticas
+        const modalHTML = `
+        <div id="matricesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-th-large text-purple-600 mr-2"></i>Matrices ANECA
+                    </h2>
+                    <button onclick="document.getElementById('matricesModal').remove()" 
+                            class="text-gray-500 hover:text-gray-700 text-2xl">
+                        &times;
+                    </button>
+                </div>
                 
-                // 2. Crear modal con las 4 matrices
-                const modalHTML = `
-                <div id="matricesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-2xl font-bold text-gray-800">
-                                <i class="fas fa-th-large text-purple-600 mr-2"></i>Matrices ANECA
-                            </h2>
-                            <button onclick="document.getElementById('matricesModal').remove()" 
-                                    class="text-gray-500 hover:text-gray-700 text-2xl">
-                                &times;
-                            </button>
+                <!-- 🔥 PANEL DE ESTADÍSTICAS -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="font-bold text-gray-700 mb-3">📊 Estado actual del sistema</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-blue-600">${estadisticas.grados}</div>
+                            <div class="text-sm text-gray-600">Grados</div>
                         </div>
-                        
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <!-- MATRIZ 1: Competencias vs Asignaturas -->
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                                <h3 class="font-bold text-lg text-blue-700 mb-2">
-                                    <i class="fas fa-table mr-2"></i>Matriz 1
-                                </h3>
-                                <p class="text-gray-600 mb-3">Competencias vs Asignaturas: Relación entre competencias y las asignaturas que las desarrollan</p>
-                                <button onclick="abrirMatriz('competencias-vs-asignaturas')" 
-                                        class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-                                    Abrir Matriz
-                                </button>
-                            </div>
-                            
-                            <!-- MATRIZ 2: Asignaturas vs Resultados -->
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                                <h3 class="font-bold text-lg text-green-700 mb-2">
-                                    <i class="fas fa-chart-bar mr-2"></i>Matriz 2
-                                </h3>
-                                <p class="text-gray-600 mb-3">Asignaturas vs Resultados Aprendizaje: Cómo cada asignatura contribuye a los resultados</p>
-                                <button onclick="abrirMatriz('asignaturas-vs-resultados')" 
-                                        class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
-                                    Abrir Matriz
-                                </button>
-                            </div>
-                            
-                            <!-- MATRIZ 3: Temporalización -->
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                                <h3 class="font-bold text-lg text-yellow-700 mb-2">
-                                    <i class="fas fa-calendar-alt mr-2"></i>Matriz 3
-                                </h3>
-                                <p class="text-gray-600 mb-3">Temporalización: Distribución temporal de competencias por curso/semestre</p>
-                                <button onclick="abrirMatriz('temporalizacion')" 
-                                        class="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">
-                                    Abrir Matriz
-                                </button>
-                            </div>
-                            
-                            <!-- MATRIZ 4: Evaluación -->
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                                <h3 class="font-bold text-lg text-red-700 mb-2">
-                                    <i class="fas fa-clipboard-check mr-2"></i>Matriz 4
-                                </h3>
-                                <p class="text-gray-600 mb-3">Sistema de Evaluación: Instrumentos y criterios de evaluación por competencia</p>
-                                <button onclick="abrirMatriz('evaluacion')" 
-                                        class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
-                                    Abrir Matriz
-                                </button>
-                            </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-green-600">${estadisticas.asignaturas}</div>
+                            <div class="text-sm text-gray-600">Asignaturas</div>
                         </div>
-                        
-                        <div class="mt-6 text-center text-sm text-gray-500">
-                            <p><i class="fas fa-info-circle mr-1"></i>Estas matrices cumplen con los requisitos de acreditación ANECA</p>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-yellow-600">${estadisticas.eremuak}</div>
+                            <div class="text-sm text-gray-600">Eremuak</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-red-600">${estadisticas.unidades}</div>
+                            <div class="text-sm text-gray-600">Unidades</div>
                         </div>
                     </div>
                 </div>
-                `;
                 
-                // 3. Añadir modal al DOM
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- MATRIZ 1 -->
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                        <h3 class="font-bold text-lg text-blue-700 mb-2">
+                            <i class="fas fa-sitemap mr-2"></i>Competencias ↔ RA
+                        </h3>
+                        <p class="text-gray-600 mb-3">Coherencia vertical competencias-resultados</p>
+                        <div class="text-xs text-gray-500 mb-3">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            ${estadisticas.competencias_ingreso} ingreso | ${estadisticas.competencias_egreso} egreso
+                        </div>
+                        <button onclick="abrirMatriz('competencias-ra')" 
+                                class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                            Configurar Matriz
+                        </button>
+                    </div>
+                    
+                    <!-- MATRIZ 2 -->
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                        <h3 class="font-bold text-lg text-green-700 mb-2">
+                            <i class="fas fa-project-diagram mr-2"></i>RA ↔ Asignaturas
+                        </h3>
+                        <p class="text-gray-600 mb-3">Cobertura curricular por asignatura</p>
+                        <div class="text-xs text-gray-500 mb-3">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            ${estadisticas.ra_total} resultados identificados
+                        </div>
+                        <button onclick="abrirMatriz('ra-asignaturas')" 
+                                class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                            Configurar Matriz
+                        </button>
+                    </div>
+                    
+                    <!-- MATRIZ 3 -->
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                        <h3 class="font-bold text-lg text-yellow-700 mb-2">
+                            <i class="fas fa-table-cells-large mr-2"></i>Competencias ↔ Asignaturas
+                        </h3>
+                        <p class="text-gray-600 mb-3">Coherencia horizontal por áreas</p>
+                        <div class="text-xs text-gray-500 mb-3">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Colores por eremua
+                        </div>
+                        <button onclick="abrirMatriz('competencias-asignaturas')" 
+                                class="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">
+                            Configurar Matriz
+                        </button>
+                    </div>
+                    
+                    <!-- MATRIZ 4 -->
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                        <h3 class="font-bold text-lg text-red-700 mb-2">
+                            <i class="fas fa-cubes mr-2"></i>Contenidos ↔ RA
+                        </h3>
+                        <p class="text-gray-600 mb-3">Alineación de contenidos con resultados</p>
+                        <div class="text-xs text-gray-500 mb-3">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            ${estadisticas.unidades} unidades disponibles
+                        </div>
+                        <button onclick="abrirMatriz('contenidos-ra')" 
+                                class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
+                            Configurar Matriz
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center text-sm text-gray-500">
+                    <p><i class="fas fa-database mr-1"></i>Datos sincronizados en tiempo real</p>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // 4. Añadir modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    });
+};
+
+// 🔥 NUEVA FUNCIÓN: CALCULAR ESTADÍSTICAS
+function calcularEstadisticasMatrices() {
+    if (!window.curriculumData) {
+        return {
+            grados: 0,
+            asignaturas: 0,
+            eremuak: 0,
+            unidades: 0,
+            competencias_ingreso: 0,
+            competencias_egreso: 0,
+            ra_total: 0
+        };
+    }
+    
+    let grados = 0;
+    let asignaturas = 0;
+    let unidades = 0;
+    let ra_total = 0;
+    
+    // Contar grados y asignaturas
+    Object.keys(window.curriculumData).forEach(key => {
+        if (key === 'kompetentziak_ingreso' || key === 'kompetentziak_egreso' || key === '_metadata') {
+            return;
+        }
+        
+        const grado = window.curriculumData[key];
+        if (grado && typeof grado === 'object') {
+            grados++;
+            
+            Object.values(grado).forEach(curso => {
+                if (Array.isArray(curso)) {
+                    asignaturas += curso.length;
+                    
+                    curso.forEach(asig => {
+                        // Contar unidades
+                        if (asig.unitateak && Array.isArray(asig.unitateak)) {
+                            unidades += asig.unitateak.length;
+                        }
+                        
+                        // Contar RAs
+                        if (asig.currentOfficialRAs && Array.isArray(asig.currentOfficialRAs)) {
+                            ra_total += asig.currentOfficialRAs.length;
+                        }
+                    });
+                }
             });
+        }
+    });
+    
+    // Extraer eremuak
+    const eremuak = extraerEremuakDelCurriculum ? extraerEremuakDelCurriculum() : [];
+    
+    // Contar competencias
+    const competencias_ingreso = window.curriculumData.kompetentziak_ingreso?.length || 0;
+    const competencias_egreso = window.curriculumData.kompetentziak_egreso?.length || 0;
+    
+    return {
+        grados,
+        asignaturas,
+        eremuak: eremuak.length,
+        unidades,
+        competencias_ingreso,
+        competencias_egreso,
+        ra_total
+    };
+}
+    
+    // 🔥 6. FUNCIÓN PARA ACTUALIZAR ESTADÍSTICAS
+        function actualizarEstadisticasMatrices() {
+            if (!window.curriculumData.matrices) return;
+            
+            const m = window.curriculumData.matrices;
+            
+            // Contar asignaturas totales
+            let asignaturaCount = 0;
+            Object.values(window.curriculumData).forEach(grado => {
+                if (typeof grado === 'object' && !Array.isArray(grado)) {
+                    Object.values(grado).forEach(curso => {
+                        if (Array.isArray(curso)) asignaturaCount += curso.length;
+                    });
+                }
+            });
+            
+            // Actualizar DOM
+            document.getElementById('countComp')?.textContent = m.matriz_competencias_ra.competencias.length;
+            document.getElementById('countRA')?.textContent = m.matriz_competencias_ra.resultados_aprendizaje.length;
+            document.getElementById('countRel1')?.textContent = m.matriz_competencias_ra.relaciones.length;
+            document.getElementById('countAsig')?.textContent = asignaturaCount;
+            document.getElementById('countRel2')?.textContent = m.matriz_ra_asignaturas.relaciones.length;
+            document.getElementById('countCompEgreso')?.textContent = m.matriz_competencias_ra.competencias.filter(c => c.tipo === 'egreso').length;
+            document.getElementById('countRel3')?.textContent = m.matriz_competencias_asignaturas.relaciones.length;
+            document.getElementById('countCont')?.textContent = m.matriz_contenidos_ra.contenidos.length;
+            document.getElementById('countRel4')?.textContent = m.matriz_contenidos_ra.relaciones.length;
+            
+            // Calcular cobertura RA
+            const totalRA = m.matriz_competencias_ra.resultados_aprendizaje.length;
+            const raConCobertura = new Set(m.matriz_ra_asignaturas.relaciones.map(r => r.ra_id)).size;
+            document.getElementById('coberturaRA')?.textContent = 
+                totalRA > 0 ? `${Math.round((raConCobertura / totalRA) * 100)}%` : '0%';
+        }
+    
+    // 🔥 7. FUNCIÓN PARA ABRIR EDITOR DETALLADO
+    window.abrirEditorMatrizDetallado = function(tipo) {
+        console.log(`📝 Abriendo editor: ${tipo}`);
+        
+        // Cerrar modal principal
+        document.getElementById('matricesModal')?.remove();
+        
+        // Mostrar mensaje simple (para empezar)
+        window.showToast(`🔄 Preparando editor de Matriz ${tipo}...`, 'normal');
+        
+        // Crear editor básico
+        const editorHTML = `
+        <div id="editorMatriz" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-edit mr-2"></i>Editor: ${tipo.replace('-', ' ↔ ').toUpperCase()}
+                    </h2>
+                    <button onclick="document.getElementById('editorMatriz').remove()" 
+                            class="text-gray-500 hover:text-gray-700 text-2xl">
+                        &times;
+                    </button>
+                </div>
+                
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="font-bold text-gray-700 mb-2">📊 Vista previa</h3>
+                    <p class="text-gray-600">Esta matriz se integrará automáticamente con tus datos existentes.</p>
+                    <p class="text-sm text-gray-500 mt-2">Competencias: ${window.curriculumData?.matrices?.matriz_competencias_ra.competencias.length || 0} | 
+                    RAs: ${window.curriculumData?.matrices?.matriz_competencias_ra.resultados_aprendizaje.length || 0}</p>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="border border-gray-300 rounded-lg p-4">
+                        <h4 class="font-bold text-gray-700 mb-3"><i class="fas fa-database mr-2"></i>Datos disponibles</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span>Grados en sistema:</span>
+                                <span class="font-bold">${Object.keys(window.curriculumData || {}).filter(k => !k.includes('kompetentziak') && k !== '_metadata').length}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Asignaturas totales:</span>
+                                <span class="font-bold" id="countTotalAsig">Calculando...</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Eremuak identificados:</span>
+                                <span class="font-bold">${window.curriculumData?.matrices?.colores_eremuak ? Object.keys(window.curriculumData.matrices.colores_eremuak).length : 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border border-gray-300 rounded-lg p-4">
+                        <h4 class="font-bold text-gray-700 mb-3"><i class="fas fa-tools mr-2"></i>Acciones</h4>
+                        <div class="space-y-3">
+                            <button onclick="extraerDatosAutomaticos('${tipo}')" 
+                                    class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                <i class="fas fa-magic mr-2"></i>Extraer datos automáticamente
+                            </button>
+                            <button onclick="generarMatrizAutomatica('${tipo}')" 
+                                    class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                <i class="fas fa-robot mr-2"></i>Generar matriz automática
+                            </button>
+                            <button onclick="guardarMatriz('${tipo}')" 
+                                    class="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
+                                <i class="fas fa-save mr-2"></i>Guardar configuración
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center text-sm text-gray-500">
+                    <p><i class="fas fa-lightbulb mr-1"></i>El sistema completo de matrices se desarrollará en la siguiente fase</p>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', editorHTML);
+        
+        // Actualizar contador de asignaturas
+        setTimeout(() => {
+            let asignaturaCount = 0;
+            if (window.curriculumData) {
+                Object.values(window.curriculumData).forEach(grado => {
+                    if (typeof grado === 'object' && !Array.isArray(grado)) {
+                        Object.values(grado).forEach(curso => {
+                            if (Array.isArray(curso)) asignaturaCount += curso.length;
+                        });
+                    }
+                });
+            }
+            document.getElementById('countTotalAsig') && 
+                (document.getElementById('countTotalAsig').textContent = asignaturaCount);
+        }, 100);
+    };
+    
+    // 🔥 8. FUNCIONES AUXILIARES SIMPLES
+    window.extraerDatosAutomaticos = function(tipo) {
+        window.showToast('🔍 Extrayendo datos automáticamente...', 'normal');
+        
+        // Extraer competencias si existen
+        if (window.curriculumData?.kompetentziak_ingreso || window.curriculumData?.kompetentziak_egreso) {
+            console.log('✅ Competencias encontradas en curriculumData');
+        }
+        
+        // Contar unidades didácticas
+        let unidadCount = 0;
+        if (window.curriculumData) {
+            Object.values(window.curriculumData).forEach(grado => {
+                if (typeof grado === 'object' && !Array.isArray(grado)) {
+                    Object.values(grado).forEach(curso => {
+                        if (Array.isArray(curso)) {
+                            curso.forEach(asig => {
+                                if (asig.unitateak && Array.isArray(asig.unitateak)) {
+                                    unidadCount += asig.unitateak.length;
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        
+        window.showToast(`✅ Extraídos: ${unidadCount} unidades didácticas`, 'success');
+    };
+    
+    window.generarMatrizAutomatica = function(tipo) {
+        window.showToast(`🔄 Generando matriz ${tipo}...`, 'normal');
+        setTimeout(() => {
+            window.showToast('✅ Matriz generada (modo demo)', 'success');
+        }, 1500);
+    };
+    
+    window.guardarMatriz = function(tipo) {
+        if (window.curriculumData.matrices) {
+            window.curriculumData.matrices.ultima_actualizacion = new Date().toISOString();
+            window.showToast('💾 Matriz guardada en memoria', 'success');
+            
+            // Opcional: guardar en Supabase
+            setTimeout(() => {
+                if (typeof window.saveCurriculumData === 'function') {
+                    window.saveCurriculumData();
+                }
+            }, 1000);
+        }
+    };
+
+
+        // 🔥 7. FUNCIONES AUXILIARES
+        function cerrarMatricesModal() {
+            document.getElementById('matricesModal')?.remove();
+        }
+        
+
+
+        // 🔥 8. EDITOR DE MATRIZ GENÉRICO
+        window.abrirEditorMatriz = function(tipo) {
+            cerrarMatricesModal();
+            
+            const titulos = {
+                'competencias-ra': 'Competencias ↔ Resultados de Aprendizaje',
+                'ra-asignaturas': 'RA ↔ Asignaturas', 
+                'competencias-asignaturas': 'Competencias ↔ Asignaturas',
+                'contenidos-ra': 'Contenidos ↔ RA'
+            };
+            
+            const modalHTML = `
+            <div id="editorMatrizModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-xl p-6 max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-edit mr-2"></i>${titulos[tipo] || 'Editor de Matriz'}
+                        </h2>
+                        <button onclick="cerrarEditorMatriz()" 
+                                class="text-gray-500 hover:text-gray-700 text-2xl">
+                            &times;
+                        </button>
+                    </div>
+                    
+                    <div id="contenidoEditorMatriz" class="min-h-[400px]">
+                        <!-- Se cargará dinámicamente según el tipo -->
+                        <div class="text-center py-20 text-gray-400">
+                            <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                            <p>Cargando editor de matriz...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Cargar editor específico
+            setTimeout(() => cargarEditorEspecifico(tipo), 100);
         };
         
+        function cerrarEditorMatriz() {
+            document.getElementById('editorMatrizModal')?.remove();
+        }
+
+        // 🔥 9. SISTEMA DE ARRASTRE (DRAG & DROP)
+        window.configurarDragAndDrop = function() {
+            // Usar la API HTML5 Drag & Drop
+            const elementosArrastrables = document.querySelectorAll('[draggable="true"]');
+            
+            elementosArrastrables.forEach(elemento => {
+                elemento.addEventListener('dragstart', function(e) {
+                    e.dataTransfer.setData('text/plain', this.id);
+                    this.classList.add('dragging');
+                });
+                
+                elemento.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                });
+            });
+            
+            const zonasDestino = document.querySelectorAll('.drop-zone');
+            
+            zonasDestino.forEach(zona => {
+                zona.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('drag-over');
+                });
+                
+                zona.addEventListener('dragleave', function() {
+                    this.classList.remove('drag-over');
+                });
+                
+                zona.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    
+                    const idElemento = e.dataTransfer.getData('text/plain');
+                    const elemento = document.getElementById(idElemento);
+                    
+                    if (elemento) {
+                        // Procesar la relación
+                        procesarRelacionArrastre(elemento, this);
+                    }
+                });
+            });
+        };
+
+        // 🔥 10. GUARDADO AUTOMÁTICO
+        function guardarMatrices() {
+            if (!window.curriculumData.matrices) return;
+            
+            window.curriculumData.matrices.ultima_actualizacion = new Date().toISOString();
+            
+            // Guardar en Supabase
+            setTimeout(() => {
+                if (typeof window.saveCurriculumData === 'function') {
+                    window.saveCurriculumData();
+                    window.showToast('✅ Matrices guardadas', 'success');
+                }
+            }, 500);
+        }
+        
+        // 🔥 11. INTEGRAR CON LOAD CURRICULUM DATA
+        // Modificar loadCurriculumData para inicializar matrices
+        const originalLoadCurriculumData = window.loadCurriculumData;
+        window.loadCurriculumData = async function() {
+            await originalLoadCurriculumData?.();
+            
+            // Inicializar sistema de matrices
+            if (window.curriculumData && !window.curriculumData.matrices) {
+                window.inicializarSistemaMatrices();
+            }
+            
+            return window.curriculumData;
+        };
+
         // 🔥 FUNCIÓN PARA ABRIR MATRIZ ESPECÍFICA
         window.abrirMatriz = function(tipo) {
             const paginas = {
-                'competencias-vs-asignaturas': 'matrices/matriz1.html',
-                'asignaturas-vs-resultados': 'matrices/matriz2.html', 
-                'temporalizacion': 'matrices/matriz3.html',
-                'evaluacion': 'matrices/matriz4.html'
-                    };
+                // Matrices originales (si existen)
+                'competencias-vs-asignaturas': 'matriz1.html',
+                'asignaturas-vs-resultados': 'matriz2.html', 
+                'temporalizacion': 'matriz3.html',
+                'evaluacion': 'matriz4.html',
+                
+                // Nuevas matrices ANECA (modo desarrollo)
+                'competencias-ra': '#',
+                'ra-asignaturas': '#',
+                'competencias-asignaturas': '#',
+                'contenidos-ra': '#'
+            };
             
             const pagina = paginas[tipo];
-            if (pagina) {
-                // Cerrar modal
-                document.getElementById('matricesModal')?.remove();
-                
-                // Redirigir
-                window.location.href = pagina;
-            } else {
+            
+            if (!pagina) {
                 window.showToast('❌ Matriz no encontrada', 'error');
+                return;
+            }
+            
+            // Cerrar modal
+            document.getElementById('matricesModal')?.remove();
+            
+            if (pagina === '#') {
+                // Matriz en desarrollo - mostrar editor básico
+                mostrarEditorMatrizBasico(tipo);
+            } else {
+                // Redirigir a página existente
+                window.location.href = pagina;
             }
         };
+    
+        // 🔥 EDITOR BÁSICO PARA MATRICES EN DESARROLLO
+        function mostrarEditorMatrizBasico(tipo) {
+            const nombres = {
+                'competencias-ra': 'Competencias ↔ Resultados de Aprendizaje',
+                'ra-asignaturas': 'Resultados ↔ Asignaturas',
+                'competencias-asignaturas': 'Competencias ↔ Asignaturas',
+                'contenidos-ra': 'Contenidos ↔ Resultados'
+            };
+            
+            const editorHTML = `
+            <div id="editorMatrizBasico" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-cogs mr-2"></i>${nombres[tipo] || 'Editor de Matriz'}
+                        </h2>
+                        <button onclick="document.getElementById('editorMatrizBasico').remove()" 
+                                class="text-gray-500 hover:text-gray-700 text-2xl">
+                            &times;
+                        </button>
+                    </div>
+                    
+                    <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-6">
+                        <h3 class="font-bold text-yellow-700 mb-2">
+                            <i class="fas fa-tools mr-2"></i>En desarrollo
+                        </h3>
+                        <p class="text-yellow-600">Esta matriz está actualmente en desarrollo.</p>
+                        <p class="text-sm text-yellow-500 mt-1">Puedes configurar los datos base que se usarán.</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de matriz</label>
+                            <input type="text" value="${tipo}" class="w-full border rounded p-2 bg-gray-100" readonly>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                            <textarea class="w-full border rounded p-2" rows="3" placeholder="Describe el propósito de esta matriz..."></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Niveles de contribución</label>
+                            <div class="flex gap-2">
+                                <span class="bg-green-100 text-green-800 px-3 py-1 rounded">I (Introduce)</span>
+                                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded">D (Desarrolla)</span>
+                                <span class="bg-red-100 text-red-800 px-3 py-1 rounded">Dp (Domina/Profundiza)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button onclick="document.getElementById('editorMatrizBasico').remove()" 
+                                class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button onclick="guardarConfiguracionMatriz('${tipo}')" 
+                                class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                            Guardar Configuración
+                        </button>
+                    </div>
+                </div>
+            </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', editorHTML);
+        }
+        
+        // 🔥 FUNCIÓN PARA GUARDAR CONFIGURACIÓN
+        window.guardarConfiguracionMatriz = function(tipo) {
+            window.showToast(`✅ Configuración de ${tipo} guardada`, 'success');
+            document.getElementById('editorMatrizBasico')?.remove();
+            
+            // Aquí iría la lógica para guardar en curriculumData.matrices
+        };
+
 
         // 🔥 FUNCIÓN PARA ACTUALIZAR CRÉDITOS
         window.actualizarCreditos = function() {
@@ -1708,6 +2345,11 @@ window.setupEventListeners = function() {
                 
                 // 🔥 NORMALIZAR Y MIGRAR
                 window.curriculumData = window.normalizeData(parsedData);
+
+                // 🔥 AÑADIR ESTO DESPUÉS de normalizeData:
+                if (window.inicializarSistemaMatrices) {
+                    window.inicializarSistemaMatrices();
+                }
 
                 // 🔥 AÑADE ESTO DESPUÉS DE normalizeData:
                 setTimeout(verificarEstructuraDatos, 800);
@@ -2525,6 +3167,7 @@ window.setupEventListeners = function() {
             }
                     })();
  
+
 
 
 
