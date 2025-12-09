@@ -3293,18 +3293,17 @@ window.initializeUI = function() {
             degreeSelect.appendChild(optionIngreso);
             console.log('✅ Añadido: Sarrerako konpetentziak');
         }
-        
-        // 🔥 PASO 4: AÑADIR COMPETENCIAS DE EGRESO (SI EXISTEN)
-        if (window.curriculumData.konpetentziak_egreso !== undefined) {
+
+        if (window.curriculumData.kompetentziak_egreso !== undefined) {
             const optionEgreso = document.createElement('option');
-            optionEgreso.value = 'konpetentziak_egreso';
+            optionEgreso.value = 'kompetentziak_egreso';
             optionEgreso.textContent = '🎓 Irteerako konpetentziak';
             optionEgreso.style.color = '#10B981';
             optionEgreso.style.fontWeight = '600';
             optionEgreso.style.backgroundColor = '#ECFDF5';
             degreeSelect.appendChild(optionEgreso);
             console.log('✅ Añadido: Irteerako konpetentziak');
-        }
+        } 
         
         if (gradosEncontrados.length === 0 && 
             !window.curriculumData.konpetentziak_ingreso && 
@@ -4875,6 +4874,7 @@ function obtenerGradosDelCurriculum() {
             }
                     })();
  
+
 
 
 
