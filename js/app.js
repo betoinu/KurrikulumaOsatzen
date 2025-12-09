@@ -2984,75 +2984,206 @@ window.eliminarCompetenciaVinculada = function(index) {
         };
         
         // 🔥 DESKARGATU JSON (berria)
-        window.downloadJsonData = async function() {
-            const user = await checkAuth();
-            
-            if (!isAdmin(user)) {
-                window.showToast('❌ Baimenik ez deskargatzeko', 'error');
-                return;
-            }
-            
-            if (!window.curriculumData) {
-                window.showToast("❌ Ez dago daturik deskargatzeko!", "error");
-                return;
-            }
-            
-            try {
-                // 🔥 PREPARAR DATOS PARA EXPORTACIÓN
-                const datosExportar = JSON.parse(JSON.stringify(window.curriculumData));
-                
-                // Añadir metadatos
-                datosExportar._metadata = {
-                    version: "2.0",
-                    fecha_exportacion: new Date().toISOString(),
-                    estructura: "nueva_con_competencias_separadas",
-                    grados: Object.keys(datosExportar).filter(k => !k.includes('konpetentziak')).length,
-                    tiene_competencias_ingreso: !!datosExportar.konpetentziak_ingreso,
-                    tiene_competencias_egreso: !!datosExportar.konpetentziak_egreso
-                };
-                
-                const dataStr = JSON.stringify(datosExportar, null, 2);
-                const blob = new Blob([dataStr], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                
-                // 🔥 NOMBRE CON VERSIÓN
-                const fecha = new Date().toISOString().slice(0, 10);
-                const hora = new Date().toISOString().slice(11, 19).replace(/:/g, '-');
-                a.download = `curriculum_v2_${fecha}_${hora}.json`;
-                
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                window.showToast(`✅ JSON v2 deskargatua: ${a.download}`, "success");
-                
-                // 🔥 MOSTRAR RESUMEN DE EXPORTACIÓN
-                setTimeout(() => {
-                    const resumen = `
-        📊 JSON EXPORTATUAREN LABURPENA:
+window.downloadJsonData = async function() {
+    const user = await checkAuth();
+    
+    if (!isAdmin(user)) {
+        window.showToast('❌ Baimenik ez deskargatzeko', 'error');
+        return;
+    }
+    
+    if (!window.curriculumData) {
+        window.showToast("❌ Ez dago daturik deskargatzeko!", "error");
+        return;
+    }
+    
+    try {
+        console.log('📊 Preparando exportación COMPLETA de datos...');
         
-        • Bertsioa: 2.0 (estructura berria)
-        • Datuak: ${new Date().toLocaleString('eu-EU')}
-        • Graduak: ${datosExportar._metadata.grados}
-        • konpetentziak Ingreso: ${datosExportar.konpetentziak_ingreso?.length || 0}
-        • konpetentziak Egreso: ${datosExportar.konpetentziak_egreso?.length || 0}
-        • Fitxategia: ${a.download}
+        // 🔥 1. CREAR COPIA COMPLETA DE TODOS LOS DATOS
+        const datosExportar = JSON.parse(JSON.stringify(window.curriculumData));
         
-        ✅ Datuak ondo migratu dira!
-                    `.trim();
-                    
-                    console.log(resumen);
-                    alert(resumen);
-                }, 500);
-                
-            } catch (e) {
-                console.error("❌ JSON deskarga errorea:", e);
-                window.showToast("❌ Errorea datuak deskargatzean.", "error");
-            }
+        // 🔥 2. AÑADIR METADATOS COMPLETOS
+        datosExportar._metadata = {
+            version: "3.0",
+            fecha_exportacion: new Date().toISOString(),
+            estructura: "completa_con_competencias",
+            exportado_por: user.email,
+            
+            // Estadísticas completas
+            grados: Object.keys(datosExportar).filter(k => 
+                !k.includes('konpetentziak') && 
+                k !== '_metadata' && 
+                k !== 'matrices'
+            ).length,
+            
+            tiene_competencias_ingreso: !!datosExportar.konpetentziak_ingreso,
+            tiene_competencias_egreso: !!datosExportar.konpetentziak_egreso,
+            tiene_matrices: !!datosExportar.matrices,
+            
+            // Contadores detallados
+            competencias_ingreso_count: datosExportar.konpetentziak_ingreso?.length || 0,
+            competencias_egreso_count: datosExportar.konpetentziak_egreso?.length || 0,
+            matrices_count: datosExportar.matrices ? 
+                Object.keys(datosExportar.matrices).length : 0
         };
+        
+        // 🔥 3. AÑADIR INFORMACIÓN DE ESTRUCTURA (DETALLADA)
+        datosExportar._estructura = {
+            grados: Object.keys(datosExportar).filter(k => 
+                !k.includes('konpetentziak') && 
+                k !== '_metadata' && 
+                k !== 'matrices'
+            ),
+            
+            competencias: {
+                ingreso: datosExportar.konpetentziak_ingreso ? 
+                    datosExportar.konpetentziak_ingreso.map(c => c.kodea) : [],
+                egreso: datosExportar.konpetentziak_egreso ? 
+                    datosExportar.konpetentziak_egreso.map(c => c.kodea) : []
+            },
+            
+            asignaturas_totales: calcularTotalAsignaturas(datosExportar),
+            unidades_totales: calcularTotalUnidades(datosExportar)
+        };
+        
+        // 🔥 4. AÑADIR RESUMEN LEGIBLE
+        datosExportar._resumen = crearResumenExportacion(datosExportar);
+        
+        // 🔥 5. CONVERTIR A JSON CON FORMATO LEGIBLE
+        const dataStr = JSON.stringify(datosExportar, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // 🔥 6. NOMBRE DESCRIPTIVO CON FECHA
+        const fecha = new Date().toISOString().slice(0, 10);
+        const hora = new Date().toISOString().slice(11, 19).replace(/:/g, '-');
+        a.download = `curriculum_completo_${fecha}_${hora}.json`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // 🔥 7. MOSTRAR RESUMEN COMPLETO
+        setTimeout(() => {
+            mostrarResumenExportacion(datosExportar, a.download);
+        }, 300);
+        
+        window.showToast(`✅ JSON deskargatua: ${a.download}`, "success");
+        
+    } catch (e) {
+        console.error("❌ JSON deskarga errorea:", e);
+        window.showToast("❌ Errorea datuak deskargatzean: " + e.message, "error");
+    }
+};
+
+// 🔥 FUNCIONES AUXILIARES PARA LA EXPORTACIÓN COMPLETA
+
+function calcularTotalAsignaturas(datos) {
+    let total = 0;
+    
+    Object.keys(datos).forEach(grado => {
+        // Saltar las claves que no son grados
+        if (grado.includes('konpetentziak') || grado === '_metadata' || grado === 'matrices') {
+            return;
+        }
+        
+        if (typeof datos[grado] === 'object') {
+            Object.values(datos[grado]).forEach(curso => {
+                if (Array.isArray(curso)) {
+                    total += curso.length;
+                }
+            });
+        }
+    });
+    
+    return total;
+}
+
+function calcularTotalUnidades(datos) {
+    let total = 0;
+    
+    Object.keys(datos).forEach(grado => {
+        if (grado.includes('konpetentziak') || grado === '_metadata' || grado === 'matrices') {
+            return;
+        }
+        
+        if (typeof datos[grado] === 'object') {
+            Object.values(datos[grado]).forEach(curso => {
+                if (Array.isArray(curso)) {
+                    curso.forEach(asignatura => {
+                        if (asignatura.unitateak && Array.isArray(asignatura.unitateak)) {
+                            total += asignatura.unitateak.length;
+                        }
+                    });
+                }
+            });
+        }
+    });
+    
+    return total;
+}
+
+function crearResumenExportacion(datos) {
+    const grados = Object.keys(datos).filter(k => 
+        !k.includes('konpetentziak') && 
+        k !== '_metadata' && 
+        k !== 'matrices'
+    );
+    
+    return {
+        titulo: `Exportación Curriculum - ${new Date().toLocaleDateString('eu-EU')}`,
+        grados_disponibles: grados,
+        competencias: {
+            ingreso: datos.konpetentziak_ingreso ? 
+                `${datos.konpetentziak_ingreso.length} konpetentzia` : 'Ez dago',
+            egreso: datos.konpetentziak_egreso ? 
+                `${datos.konpetentziak_egreso.length} konpetentzia` : 'Ez dago'
+        },
+        matrices: datos.matrices ? 'Matrices ANECA incluidas' : 'Ez dago',
+        estadisticas: {
+            asignaturas: calcularTotalAsignaturas(datos),
+            unidades: calcularTotalUnidades(datos),
+            grados: grados.length
+        }
+    };
+}
+
+function mostrarResumenExportacion(datos, nombreArchivo) {
+    const resumen = datos._resumen;
+    
+    const mensaje = `
+📊 EXPORTACIÓN COMPLETA - LABURPENA 📊
+
+✅ Fitxategia: ${nombreArchivo}
+⏰ Data: ${new Date().toLocaleString('eu-EU')}
+
+🎓 GRADUAK (${resumen.estadisticas.grados}):
+${resumen.grados_disponibles.map((g, i) => `   ${i+1}. ${g}`).join('\n')}
+
+🎯 konpetentziak:
+   • Sarrerako: ${resumen.competencias.ingreso}
+   • Irteerako: ${resumen.competencias.egreso}
+
+📚 ASIGNATURAK: ${resumen.estadisticas.asignaturas} ikasgai
+📦 UNITATEAK: ${resumen.estadisticas.unidades} unitate
+${datos.matrices ? '✅ Matrices ANECA incluidas' : '⚠️ Matrices ANECA ez dago'}
+
+💾 DATUAK ONDO EXPORTATU DIRA!
+    `.trim();
+    
+    console.log(mensaje);
+    
+    // Mostrar alerta con opción para copiar
+    if (confirm(`${mensaje}\n\nKopiatu laburpena arbelera?`)) {
+        navigator.clipboard.writeText(mensaje).then(() => {
+            window.showToast('📋 Laburpena kopiatua!', 'success');
+        });
+    }
+}
         
         // JSON kargatu (soilik administratzaileentzat)
         async function uploadJsonFile() {
@@ -4744,6 +4875,7 @@ function obtenerGradosDelCurriculum() {
             }
                     })();
  
+
 
 
 
