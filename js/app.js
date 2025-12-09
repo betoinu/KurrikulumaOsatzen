@@ -2634,15 +2634,79 @@ window.initializeUI = function() {
         
         const gradosEncontrados = [];
         
-        Object.keys(window.curriculumData).forEach(key => {
-            // Excluir keys que NO son grados
-            if (key === 'kompetentziak_ingreso' || 
-                key === 'kompetentziak_egreso' || 
-                key === '_metadata' ||
-                key === 'matrices' ||
-                key.startsWith('kompetentziak')) {
-                return;
-            }
+// 🔥 PASO 1: PRIMERO AÑADIR GRADOS NORMALES
+Object.keys(window.curriculumData).forEach(key => {
+    // Excluir keys que NO son grados
+    if (key === 'kompetentziak_ingreso' || 
+        key === 'kompetentziak_egreso' || 
+        key === '_metadata' ||
+        key === 'matrices' ||
+        key.startsWith('kompetentziak')) {
+        return;
+    }
+    
+    const gradoData = window.curriculumData[key];
+    console.log(`• Analizando "${key}":`, {
+        tipo: typeof gradoData,
+        esObjeto: gradoData && typeof gradoData === 'object',
+        claves: gradoData ? Object.keys(gradoData) : []
+    });
+    
+    // Verificar si es un grado (tiene cursos como arrays)
+    if (gradoData && typeof gradoData === 'object') {
+        const tieneCursos = Object.values(gradoData).some(val => Array.isArray(val));
+        const tieneClavesCurso = Object.keys(gradoData).some(k => 
+            /^\d+$/.test(k) || k.includes('Maila') || k.includes('curso')
+        );
+        
+        if (tieneCursos || tieneClavesCurso) {
+            console.log(`✅ "${key}" es un grado válido`);
+            gradosEncontrados.push(key);
+            
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = key;
+            degreeSelect.appendChild(option);
+        }
+    }
+});
+
+console.log(`📊 Grados encontrados: ${gradosEncontrados.length}`, gradosEncontrados);
+
+// 🔥 PASO 2: AÑADIR SEPARADOR SI HAY GRADOS
+if (gradosEncontrados.length > 0) {
+    const separator = document.createElement('option');
+    separator.disabled = true;
+    separator.textContent = '────────────────────';
+    separator.style.color = '#9CA3AF';
+    separator.style.fontSize = '12px';
+    separator.style.padding = '4px 0';
+    degreeSelect.appendChild(separator);
+}
+
+// 🔥 PASO 3: AÑADIR COMPETENCIAS DE INGRESO (SI EXISTEN)
+if (window.curriculumData.kompetentziak_ingreso !== undefined) {
+    const optionIngreso = document.createElement('option');
+    optionIngreso.value = 'kompetentziak_ingreso';
+    optionIngreso.textContent = '🎯 Sarrerako Kompetentziak';
+    optionIngreso.style.color = '#3B82F6';
+    optionIngreso.style.fontWeight = '600';
+    optionIngreso.style.backgroundColor = '#EFF6FF';
+    degreeSelect.appendChild(optionIngreso);
+    console.log('✅ Añadido: Sarrerako Kompetentziak');
+}
+
+// 🔥 PASO 4: AÑADIR COMPETENCIAS DE EGRESO (SI EXISTEN)
+if (window.curriculumData.kompetentziak_egreso !== undefined) {
+    const optionEgreso = document.createElement('option');
+    optionEgreso.value = 'kompetentziak_egreso';
+    optionEgreso.textContent = '🎓 Irteerako Kompetentziak';
+    optionEgreso.style.color = '#10B981';
+    optionEgreso.style.fontWeight = '600';
+    optionEgreso.style.backgroundColor = '#ECFDF5';
+    degreeSelect.appendChild(optionEgreso);
+    console.log('✅ Añadido: Irteerako Kompetentziak');
+}
             
             const gradoData = window.curriculumData[key];
             console.log(`• Analizando "${key}":`, {
@@ -2709,17 +2773,37 @@ window.initializeUI = function() {
 window.onDegreeChange = function() {
     const degreeSelect = document.getElementById('degreeSelect');
     const selectedValue = degreeSelect.value;
-            
-    // 🔥 DETECTAR SI ES COMPETENCIA USANDO UTILS
+    
+    console.log(`🎓 Grado seleccionado: "${selectedValue}"`);
+    
+    // 🔥 DETECTAR SI ES COMPETENCIA
     if (selectedValue === 'kompetentziak_ingreso' || selectedValue === 'kompetentziak_egreso') {
+        console.log(`🎯 Redirigiendo a editor de competencias: ${selectedValue}`);
+        
+        // Ocultar UI normal
+        document.getElementById('welcomeEditor').classList.add('hidden');
+        document.getElementById('editorPanel').classList.remove('hidden');
+        
+        // Determinar tipo
         const tipo = selectedValue === 'kompetentziak_ingreso' ? 'ingreso' : 'egreso';
-                
-        if (typeof window.showCompetenciasGlobales === 'function') {
+        
+        // 🔥 LLAMAR A LA FUNCIÓN ESPECIALIZADA
+        if (typeof window.mostrarEditorCompetencias === 'function') {
+            window.mostrarEditorCompetencias(tipo);
+        } 
+        // Si no existe, usar función alternativa
+        else if (typeof window.showCompetenciasGlobales === 'function') {
             window.showCompetenciasGlobales(tipo);
         }
-        return;
+        // Si no existe ninguna, mostrar error
+        else {
+            console.error('❌ No hay función para mostrar competencias');
+            window.showToast?.('❌ Editor de competencias no disponible', 'error');
+        }
+        
+        return; // IMPORTANTE: Salir de la función
     }
-            
+    
     // ✅ Si es un grado normal, proceder como siempre
     window.selectedDegree = selectedValue;
     window.selectedYear = null;
@@ -2728,6 +2812,199 @@ window.onDegreeChange = function() {
     document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Aukeratu maila bat irakasgaiak ikusteko.</li>';
     window.resetEditor();
 };
+            
+// 🔥 EDITOR ESPECIALIZADO PARA COMPETENCIAS
+window.mostrarEditorCompetencias = function(tipo) {
+    console.log(`🎨 Mostrando editor especializado para competencias ${tipo}`);
+    
+    // Configurar título del editor
+    const titulo = tipo === 'ingreso' ? 'Sarrerako Kompetentziak' : 'Irteerako Kompetentziak';
+    const descripcion = tipo === 'ingreso' 
+        ? 'Ikasleek sartzerakoan izan behar dituzten gaitasunak'
+        : 'Ikasleek graduatu aurretik lortu behar dituzten gaitasunak';
+    const color = tipo === 'ingreso' ? 'blue' : 'green';
+    
+    // Actualizar UI del editor
+    document.getElementById('subjectTitle').textContent = titulo;
+    document.getElementById('subjectType').textContent = descripcion;
+    document.getElementById('subjectCredits').textContent = '';
+    document.getElementById('subjectArea').value = '';
+    document.getElementById('subjectNameEdit').value = '';
+    document.getElementById('subjectCreditsEdit').value = '';
+    document.getElementById('subjectRAs').value = '';
+    
+    // 🔥 RENDERIZAR INTERFAZ ESPECIALIZADA
+    const unidadesContainer = document.getElementById('unitsContainer');
+    const noUnitsMsg = document.getElementById('noUnitsMessage');
+    
+    if (unidadesContainer) {
+        noUnitsMsg.classList.add('hidden');
+        
+        // Obtener competencias del tipo seleccionado
+        const competenciasKey = tipo === 'ingreso' ? 'kompetentziak_ingreso' : 'kompetentziak_egreso';
+        const competencias = window.curriculumData[competenciasKey] || [];
+        
+        // 🔥 INTERFAZ ESPECIALIZADA PARA COMPETENCIAS
+        let html = `
+        <div class="space-y-6">
+            <div class="bg-${color}-50 border border-${color}-200 rounded-lg p-5">
+                <h3 class="text-xl font-bold text-${color}-800 mb-2 flex items-center">
+                    <i class="fas ${tipo === 'ingreso' ? 'fa-sign-in-alt' : 'fa-sign-out-alt'} mr-3"></i>
+                    ${titulo}
+                </h3>
+                <p class="text-${color}-600">
+                    ${descripcion}
+                </p>
+                <div class="mt-4 flex items-center justify-between">
+                    <span class="text-sm text-${color}-700">
+                        <i class="fas fa-list-check mr-1"></i>
+                        ${competencias.length} kompetentzia definitu
+                    </span>
+                    <button onclick="añadirCompetencia('${tipo}')" 
+                            class="px-4 py-2 bg-${color}-600 text-white rounded-lg hover:bg-${color}-700 transition">
+                        <i class="fas fa-plus mr-2"></i>Gehitu Berria
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        if (competencias.length === 0) {
+            html += `
+                <div class="text-center py-10 text-gray-400">
+                    <i class="fas fa-inbox text-4xl mb-4"></i>
+                    <p class="text-lg mb-2">Ez dago kompetentziarik definituta</p>
+                    <p class="text-sm mb-6">Gehitu lehenengo kompetentzia botoia erabiliz</p>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="space-y-4">
+            `;
+            
+            competencias.forEach((comp, index) => {
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-${color}-50 transition group">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-grow">
+                                <div class="mb-3">
+                                    <input type="text" 
+                                           value="${comp.kodea || `${tipo === 'ingreso' ? 'SI' : 'SE'}${index + 1}`}"
+                                           class="w-32 border border-gray-300 rounded px-3 py-2 text-sm font-bold bg-${color}-100"
+                                           onchange="actualizarCompetencia('${tipo}', ${index}, 'kodea', this.value)"
+                                           placeholder="Kodea">
+                                </div>
+                                <textarea class="w-full border border-gray-300 rounded p-3 text-sm focus:outline-none focus:ring-2 focus:ring-${color}-300" 
+                                          rows="3"
+                                          onchange="actualizarCompetencia('${tipo}', ${index}, 'deskribapena', this.value)"
+                                          placeholder="Deskribatu kompetentzia hau...">${comp.deskribapena || ''}</textarea>
+                            </div>
+                            <button onclick="eliminarCompetencia('${tipo}', ${index})" 
+                                    class="ml-4 text-red-400 hover:text-red-600 p-2">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-500 flex justify-between">
+                            <span>${comp.data_sartze ? `Data: ${comp.data_sartze}` : ''}</span>
+                            <span>${comp.egilea ? `Egilea: ${comp.egilea}` : ''}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                </div>
+            `;
+        }
+        
+        html += `
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <button onclick="añadirCompetencia('${tipo}')" 
+                        class="w-full bg-${color}-600 hover:bg-${color}-700 text-white px-6 py-3 rounded-lg font-medium flex items-center justify-center">
+                    <i class="fas fa-plus mr-2"></i>Gehitu Kompetentzia Berria
+                </button>
+            </div>
+        </div>
+        `;
+        
+        unidadesContainer.innerHTML = html;
+    }
+    
+    console.log(`✅ Editor de competencias ${tipo} mostrado`);
+};
+
+// 🔥 FUNCIONES AUXILIARES PARA COMPETENCIAS
+window.añadirCompetencia = function(tipo) {
+    const competenciasKey = tipo === 'ingreso' ? 'kompetentziak_ingreso' : 'kompetentziak_egreso';
+    
+    if (!window.curriculumData[competenciasKey]) {
+        window.curriculumData[competenciasKey] = [];
+    }
+    
+    const numero = window.curriculumData[competenciasKey].length + 1;
+    const prefijo = tipo === 'ingreso' ? 'SI' : 'SE';
+    
+    window.curriculumData[competenciasKey].push({
+        kodea: `${prefijo}${numero}`,
+        deskribapena: 'Deskribatu kompetentzia hau...',
+        data_sartze: new Date().toISOString().slice(0, 10),
+        egilea: window.supabase?.auth?.getUser()?.then(({data}) => data.user?.email) || 'admin'
+    });
+    
+    // Volver a renderizar
+    window.mostrarEditorCompetencias(tipo);
+    
+    // Guardar cambios
+    setTimeout(() => {
+        if (window.saveCurriculumData) {
+            window.saveCurriculumData();
+        }
+    }, 500);
+    
+    window.showToast?.('✅ Kompetentzia berria gehitu da', 'success');
+};
+
+window.actualizarCompetencia = function(tipo, index, campo, valor) {
+    const competenciasKey = tipo === 'ingreso' ? 'kompetentziak_ingreso' : 'kompetentziak_egreso';
+    
+    if (!window.curriculumData[competenciasKey] || !window.curriculumData[competenciasKey][index]) {
+        return;
+    }
+    
+    window.curriculumData[competenciasKey][index][campo] = valor;
+    
+    // Guardar automáticamente después de un tiempo
+    setTimeout(() => {
+        if (window.saveCurriculumData) {
+            window.saveCurriculumData();
+        }
+    }, 1000);
+};
+
+window.eliminarCompetencia = function(tipo, index) {
+    const competenciasKey = tipo === 'ingreso' ? 'kompetentziak_ingreso' : 'kompetentziak_egreso';
+    
+    if (!window.curriculumData[competenciasKey] || !window.curriculumData[competenciasKey][index]) {
+        return;
+    }
+    
+    if (confirm('Ziur zaude kompetentzia ezabatu nahi duzula?\n\nEkintza hau ezin da desegin.')) {
+        window.curriculumData[competenciasKey].splice(index, 1);
+        
+        // Volver a renderizar
+        window.mostrarEditorCompetencias(tipo);
+        
+        // Guardar cambios
+        setTimeout(() => {
+            if (window.saveCurriculumData) {
+                window.saveCurriculumData();
+            }
+        }, 500);
+        
+        window.showToast?.('🗑️ Kompetentzia ezabatua', 'success');
+    }
+};
+
+
 
 window.renderYears = function() { 
     const container = document.getElementById('sectionButtons');
@@ -3952,6 +4229,7 @@ function obtenerGradosDelCurriculum() {
             }
                     })();
  
+
 
 
 
