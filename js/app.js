@@ -3334,25 +3334,241 @@ window.onDegreeChange = function() {
     const degreeSelect = document.getElementById('degreeSelect');
     const selectedValue = degreeSelect.value;
     
-    console.log(`🎓 Seleccionado: "${selectedValue}"`);
+    console.log('🎓 onDegreeChange - Valor seleccionado:', selectedValue);
     
-    // Si es competencia (ingreso/egreso), guardar el tipo y redirigir
-    if (selectedValue === 'konpetentziak_ingreso' || selectedValue === 'konpetentziak_egreso') {
-        window.selectedCompetenciaTipo = selectedValue === 'konpetentziak_ingreso' ? 'ingreso' : 'egreso';
-        window.selectedCompetenciaGrado = null; // Resetear grado
-        window.selectedCompetenciaArea = null; // Resetear área
+    // 🔥 RESET: Ocultar todos los paneles primero
+    const paneles = ['welcomeEditor', 'editorPanel', 'competenciasPanel'];
+    paneles.forEach(id => {
+        const panel = document.getElementById(id);
+        if (panel) panel.classList.add('hidden');
+    });
+    
+    // 🔥 CASO 1: COMPETENCIAS DE INGRESO
+    if (selectedValue === 'kompetentziak_ingreso') {
+        console.log('🎯 PROCESANDO: Competencias de INGRESO');
         
-        console.log(`🎯 Redirigiendo a selector de grados para competencias: ${window.selectedCompetenciaTipo}`);
+        // 1. Establecer tipo
+        window.selectedCompetenciaTipo = 'ingreso';
+        window.selectedDegree = null; // ¡IMPORTANTE! No es un grado
+        window.selectedYear = null;   // ¡IMPORTANTE! No tiene cursos
+        window.selectedSubjectIndex = null;
         
-        // Mostrar panel de selección de grado para competencias
-        mostrarPanelSeleccionGradoCompetencias();
+        // 2. Mostrar panel ESPECIAL de competencias
+        const competenciasPanel = document.getElementById('competenciasPanel');
+        if (competenciasPanel) {
+            competenciasPanel.classList.remove('hidden');
+        } else {
+            console.error('❌ competenciasPanel NO EXISTE en el HTML');
+            return;
+        }
+        
+        // 3. Configurar panel para INGRESO
+        const competenciasBadge = document.getElementById('competenciasBadge');
+        const competenciasTitle = document.getElementById('competenciasTitle');
+        const competenciasDescription = document.getElementById('competenciasDescription');
+        const competenciasCount = document.getElementById('competenciasCount');
+        const volverBtn = document.getElementById('volverAGradosBtn');
+        const añadirBtn = document.getElementById('añadirCompetenciaBtn');
+        
+        if (competenciasBadge) {
+            competenciasBadge.textContent = 'Sarrera';
+            competenciasBadge.className = 'inline-block text-xs px-2 py-1 rounded-full mb-2 font-semibold bg-blue-100 text-blue-800';
+        }
+        
+        if (competenciasTitle) {
+            competenciasTitle.textContent = 'Sarrerako konpetentziak';
+            competenciasTitle.className = 'text-2xl font-bold text-blue-800';
+        }
+        
+        if (competenciasDescription) {
+            competenciasDescription.textContent = 'Ikasleek sartzerakoan izan behar dituzten gaitasunak';
+            competenciasDescription.className = 'text-blue-600 mt-1';
+        }
+        
+        // 4. Cargar y mostrar competencias
+        const competencias = window.curriculumData?.kompetentziak_ingreso || [];
+        console.log(`📋 Competencias de ingreso encontradas: ${competencias.length}`);
+        
+        if (competenciasCount) {
+            competenciasCount.textContent = `${competencias.length} konpetentzia definituta`;
+            competenciasCount.className = 'text-sm text-blue-600 font-medium';
+        }
+        
+        // 5. Renderizar competencias
+        renderizarCompetencias(competencias, 'ingreso');
+        
+        // 6. Configurar botones
+        if (volverBtn) {
+            volverBtn.onclick = () => {
+                console.log('🔙 Volviendo a grados desde competencias ingreso');
+                degreeSelect.value = '';
+                window.resetEditor();
+            };
+        }
+        
+        if (añadirBtn) {
+            añadirBtn.onclick = () => {
+                añadirCompetencia('ingreso');
+            };
+            añadirBtn.className = 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700';
+            añadirBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Gehitu konpetentzia Berria';
+        }
+        
+        // 7. Configurar botón guardar
+        const guardarBtn = document.getElementById('guardarCompetenciasBtn');
+        if (guardarBtn) {
+            guardarBtn.onclick = () => {
+                if (window.saveCurriculumData) {
+                    window.saveCurriculumData();
+                    window.showToast?.('✅ konpetentziak gordeta', 'success');
+                }
+            };
+            guardarBtn.className = 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700';
+        }
+        
         return;
     }
     
-    // Si es un grado normal, proceder como siempre
+    // 🔥 CASO 2: COMPETENCIAS DE EGRESO
+    if (selectedValue === 'kompetentziak_egreso') {
+        console.log('🎓 PROCESANDO: Competencias de EGRESO');
+        
+        // 1. Establecer tipo
+        window.selectedCompetenciaTipo = 'egreso';
+        window.selectedDegree = null; // ¡IMPORTANTE! No es un grado
+        window.selectedYear = null;   // ¡IMPORTANTE! No tiene cursos
+        window.selectedSubjectIndex = null;
+        
+        // 2. Mostrar panel ESPECIAL de competencias
+        const competenciasPanel = document.getElementById('competenciasPanel');
+        if (competenciasPanel) {
+            competenciasPanel.classList.remove('hidden');
+        } else {
+            console.error('❌ competenciasPanel NO EXISTE en el HTML');
+            return;
+        }
+        
+        // 3. Configurar panel para EGRESO
+        const competenciasBadge = document.getElementById('competenciasBadge');
+        const competenciasTitle = document.getElementById('competenciasTitle');
+        const competenciasDescription = document.getElementById('competenciasDescription');
+        const competenciasCount = document.getElementById('competenciasCount');
+        const volverBtn = document.getElementById('volverAGradosBtn');
+        const añadirBtn = document.getElementById('añadirCompetenciaBtn');
+        
+        if (competenciasBadge) {
+            competenciasBadge.textContent = 'Irteera';
+            competenciasBadge.className = 'inline-block text-xs px-2 py-1 rounded-full mb-2 font-semibold bg-green-100 text-green-800';
+        }
+        
+        if (competenciasTitle) {
+            competenciasTitle.textContent = 'Irteerako konpetentziak';
+            competenciasTitle.className = 'text-2xl font-bold text-green-800';
+        }
+        
+        if (competenciasDescription) {
+            competenciasDescription.textContent = 'Ikasleek graduatu aurretik lortu behar dituzten gaitasunak';
+            competenciasDescription.className = 'text-green-600 mt-1';
+        }
+        
+        // 4. Cargar y mostrar competencias
+        const competencias = window.curriculumData?.kompetentziak_egreso || [];
+        console.log(`📋 Competencias de egreso encontradas: ${competencias.length}`);
+        
+        if (competenciasCount) {
+            competenciasCount.textContent = `${competencias.length} konpetentzia definituta`;
+            competenciasCount.className = 'text-sm text-green-600 font-medium';
+        }
+        
+        // 5. Renderizar competencias
+        renderizarCompetencias(competencias, 'egreso');
+        
+        // 6. Configurar botones
+        if (volverBtn) {
+            volverBtn.onclick = () => {
+                console.log('🔙 Volviendo a grados desde competencias egreso');
+                degreeSelect.value = '';
+                window.resetEditor();
+            };
+        }
+        
+        if (añadirBtn) {
+            añadirBtn.onclick = () => {
+                añadirCompetencia('egreso');
+            };
+            añadirBtn.className = 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700';
+            añadirBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Gehitu konpetentzia Berria';
+        }
+        
+        // 7. Configurar botón guardar
+        const guardarBtn = document.getElementById('guardarCompetenciasBtn');
+        if (guardarBtn) {
+            guardarBtn.onclick = () => {
+                if (window.saveCurriculumData) {
+                    window.saveCurriculumData();
+                    window.showToast?.('✅ konpetentziak gordeta', 'success');
+                }
+            };
+            guardarBtn.className = 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700';
+        }
+        
+        return;
+    }
+    
+    // 🔥 CASO 3: GRADO NORMAL (NO competencias)
+    console.log('📚 PROCESANDO: Grado normal -', selectedValue);
+    
+    // 1. Establecer selecciones
     window.selectedDegree = selectedValue;
     window.selectedYear = null;
     window.selectedSubjectIndex = null;
+    window.selectedCompetenciaTipo = null; // ¡IMPORTANTE! No es competencia
+    
+    // 2. Mostrar panel NORMAL de editor
+    const editorPanel = document.getElementById('editorPanel');
+    if (editorPanel) {
+        editorPanel.classList.remove('hidden');
+    } else {
+        console.error('❌ editorPanel NO EXISTE en el HTML');
+        return;
+    }
+    
+    // 3. Configurar título
+    const subjectTitle = document.getElementById('subjectTitle');
+    const subjectType = document.getElementById('subjectType');
+    
+    if (subjectTitle) {
+        subjectTitle.textContent = 'Irakasgai bat aukeratu';
+    }
+    
+    if (subjectType) {
+        subjectType.textContent = 'Gradua: ' + (selectedValue || '');
+    }
+    
+    // 4. Renderizar años (solo para grados reales)
+    window.renderYears();
+    
+    // 5. Limpiar lista de asignaturas
+    const subjectList = document.getElementById('subjectList');
+    if (subjectList) {
+        subjectList.innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Aukeratu maila bat irakasgaiak ikusteko.</li>';
+    }
+    
+    // 6. Limpiar editor
+    const clearFields = ['subjectNameEdit', 'subjectArea', 'subjectCreditsEdit', 'subjectRAs'];
+    clearFields.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.value = '';
+    });
+    
+    const unitsContainer = document.getElementById('unitsContainer');
+    const noUnitsMsg = document.getElementById('noUnitsMessage');
+    
+    if (unitsContainer) unitsContainer.innerHTML = '';
+    if (noUnitsMsg) noUnitsMsg.classList.remove('hidden');
+    
+    console.log('✅ Grado normal configurado correctamente');
+};
     
     // Renderizar años y mostrar editor de asignaturas
     window.renderYears();
@@ -4874,6 +5090,7 @@ function obtenerGradosDelCurriculum() {
             }
                     })();
  
+
 
 
 
