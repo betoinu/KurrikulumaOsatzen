@@ -2809,112 +2809,177 @@ window.onDegreeChange = function() {
 window.mostrarEditorCompetencias = function(tipo) {
     console.log(`🎨 Mostrando editor especializado para competencias ${tipo}`);
     
+    // 🔥 USAR EL NUEVO SISTEMA DE PANELES
+    if (typeof window.mostrarPanel === 'function') {
+        window.mostrarPanel('competenciasPanel');
+    } else {
+        // Fallback manual
+        document.getElementById('welcomeEditor').classList.add('hidden');
+        document.getElementById('editorPanel').classList.add('hidden');
+        document.getElementById('competenciasPanel').classList.remove('hidden');
+    }
+    
     // Configurar título
     const titulo = tipo === 'ingreso' ? 'Sarrerako Kompetentziak' : 'Irteerako Kompetentziak';
     const descripcion = tipo === 'ingreso' 
         ? 'Ikasleek sartzerakoan izan behar dituzten gaitasunak'
         : 'Ikasleek graduatu aurretik lortu behar dituzten gaitasunak';
+    const color = tipo === 'ingreso' ? 'blue' : 'green';
+    const badgeColor = tipo === 'ingreso' ? 'badge-ingreso' : 'badge-egreso';
+    const badgeText = tipo === 'ingreso' ? 'Sarrera' : 'Irteera';
     
-    // Actualizar UI del editor
-    document.getElementById('welcomeEditor').classList.add('hidden');
-    document.getElementById('editorPanel').classList.remove('hidden');
-    document.getElementById('subjectTitle').textContent = titulo;
-    document.getElementById('subjectType').textContent = descripcion;
-    document.getElementById('subjectCredits').textContent = '';
+    // 🔥 ACTUALIZAR EL NUEVO PANEL (competenciasPanel)
+    const competenciasBadge = document.getElementById('competenciasBadge');
+    const competenciasTitle = document.getElementById('competenciasTitle');
+    const competenciasDescription = document.getElementById('competenciasDescription');
+    const competenciasCount = document.getElementById('competenciasCount');
     
-    // Limpiar campos del editor genérico
-    document.getElementById('subjectArea').value = '';
-    document.getElementById('subjectNameEdit').value = '';
-    document.getElementById('subjectCreditsEdit').value = '';
-    document.getElementById('subjectRAs').value = '';
+    if (competenciasBadge) {
+        competenciasBadge.textContent = badgeText;
+        competenciasBadge.className = `inline-block text-xs px-2 py-1 rounded-full mb-2 font-semibold ${badgeColor}`;
+    }
     
-    // 🔥 RENDERIZAR INTERFAZ ESPECIALIZADA
+    if (competenciasTitle) {
+        competenciasTitle.textContent = titulo;
+        competenciasTitle.className = `text-2xl font-bold text-${color}-800`;
+    }
+    
+    if (competenciasDescription) {
+        competenciasDescription.textContent = descripcion;
+        competenciasDescription.className = `text-${color}-600 mt-1`;
+    }
+    
+    // Obtener competencias
     const competenciasKey = tipo === 'ingreso' ? 'kompetentziak_ingreso' : 'kompetentziak_egreso';
     const competencias = window.curriculumData[competenciasKey] || [];
     
-    let html = `
-    <div class="space-y-6">
-        <div class="${tipo === 'ingreso' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'} border rounded-lg p-5">
-            <h3 class="text-xl font-bold ${tipo === 'ingreso' ? 'text-blue-800' : 'text-green-800'} mb-2">
-                <i class="fas ${tipo === 'ingreso' ? 'fa-sign-in-alt' : 'fa-sign-out-alt'} mr-2"></i>
-                ${titulo}
-            </h3>
-            <p class="${tipo === 'ingreso' ? 'text-blue-600' : 'text-green-600'} mb-4">
-                ${descripcion}
-            </p>
-            <div class="flex items-center justify-between">
-                <span class="text-sm ${tipo === 'ingreso' ? 'text-blue-700' : 'text-green-700'}">
-                    <i class="fas fa-list-check mr-1"></i>
-                    ${competencias.length} kompetentzia definitu
-                </span>
-                <button onclick="añadirCompetencia('${tipo}')" 
-                        class="px-4 py-2 ${tipo === 'ingreso' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg">
-                    <i class="fas fa-plus mr-2"></i>Gehitu Berria
-                </button>
-            </div>
-        </div>
-    `;
+    // Actualizar contador
+    if (competenciasCount) {
+        competenciasCount.textContent = `${competencias.length} kompetentzia definituta`;
+        competenciasCount.className = `text-sm text-${color}-600 font-medium`;
+    }
+    
+    // 🔥 CONFIGURAR BOTÓN VOLVER (en el nuevo panel)
+    const volverBtn = document.getElementById('volverAGradosBtn');
+    if (volverBtn) {
+        volverBtn.onclick = function() {
+            window.resetEditor();
+            // También resetear el selector de grados
+            const degreeSelect = document.getElementById('degreeSelect');
+            if (degreeSelect) degreeSelect.value = '';
+        };
+    }
+    
+    // 🔥 CONFIGURAR BOTÓN AÑADIR (en el nuevo panel)
+    const añadirBtn = document.getElementById('añadirCompetenciaBtn');
+    if (añadirBtn) {
+        añadirBtn.onclick = function() {
+            window.añadirCompetencia(tipo);
+        };
+        añadirBtn.className = `w-full px-4 py-3 bg-${color}-600 text-white rounded-lg hover:bg-${color}-700 font-medium`;
+        añadirBtn.innerHTML = `<i class="fas fa-plus mr-2"></i>Gehitu Kompetentzia Berria`;
+    }
+    
+    // 🔥 CONFIGURAR BOTÓN GUARDAR (en el nuevo panel)
+    const guardarBtn = document.getElementById('guardarCompetenciasBtn');
+    if (guardarBtn) {
+        guardarBtn.onclick = function() {
+            if (window.saveCurriculumData) {
+                window.saveCurriculumData();
+                window.showToast?.('✅ Kompetentziak gordeta', 'success');
+            }
+        };
+        guardarBtn.className = `px-4 py-2 bg-${color}-600 text-white rounded-lg hover:bg-${color}-700`;
+    }
+    
+    // 🔥 CONFIGURAR BOTÓN EXPORTAR (en el nuevo panel)
+    const exportarBtn = document.getElementById('exportarCompetenciasBtn');
+    if (exportarBtn) {
+        exportarBtn.onclick = function() {
+            exportarCompetencias(tipo);
+        };
+        exportarBtn.className = `px-4 py-2 bg-${color === 'blue' ? 'indigo' : 'emerald'}-600 text-white rounded-lg hover:bg-${color === 'blue' ? 'indigo' : 'emerald'}-700`;
+    }
+    
+    // 🔥 RENDERIZAR COMPETENCIAS EN EL NUEVO CONTENEDOR (competenciasContainer)
+    const competenciasContainer = document.getElementById('competenciasContainer');
+    if (!competenciasContainer) {
+        console.error('❌ No se encontró competenciasContainer');
+        return;
+    }
     
     if (competencias.length === 0) {
-        html += `
-            <div class="text-center py-10 text-gray-400">
-                <i class="fas fa-inbox text-4xl mb-4"></i>
-                <p class="text-lg mb-2">Ez dago kompetentziarik definituta</p>
-                <p class="text-sm">Klikatu "Gehitu Berria" botoian lehenengo kompetentzia sortzeko</p>
+        competenciasContainer.innerHTML = `
+            <div class="text-center py-12 text-gray-400">
+                <i class="fas fa-inbox text-5xl mb-4"></i>
+                <h3 class="text-xl font-medium text-gray-500 mb-2">Ez dago kompetentziarik</h3>
+                <p class="text-gray-400">Gehitu lehenengo kompetentzia botoia erabiliz</p>
             </div>
         `;
     } else {
-        html += '<div class="space-y-4">';
+        let html = '<div class="space-y-4">';
         
         competencias.forEach((comp, index) => {
             html += `
-                <div class="border border-gray-200 rounded-lg p-4 hover:${tipo === 'ingreso' ? 'bg-blue-50' : 'bg-green-50'} transition">
+                <div class="border border-gray-200 rounded-lg p-4 hover:bg-${color}-50 transition ${tipo === 'ingreso' ? 'border-l-4 border-blue-500' : 'border-l-4 border-green-500'}">
                     <div class="flex justify-between items-start">
                         <div class="flex-grow mr-4">
                             <div class="mb-2">
                                 <input type="text" 
                                        value="${comp.kodea || `${tipo === 'ingreso' ? 'SI' : 'SE'}${index + 1}`}"
-                                       class="w-32 border border-gray-300 rounded px-3 py-2 text-sm font-bold ${tipo === 'ingreso' ? 'bg-blue-100' : 'bg-green-100'}"
+                                       class="w-32 border border-gray-300 rounded px-3 py-2 text-sm font-bold bg-${color}-100 focus:bg-white focus:ring-2 focus:ring-${color}-300"
                                        onchange="actualizarCompetencia('${tipo}', ${index}, 'kodea', this.value)"
                                        placeholder="Kodea">
                             </div>
-                            <textarea class="w-full border border-gray-300 rounded p-3 text-sm focus:outline-none focus:ring-2 ${tipo === 'ingreso' ? 'focus:ring-blue-300' : 'focus:ring-green-300'}" 
+                            <textarea class="w-full border border-gray-300 rounded p-3 text-sm focus:outline-none focus:ring-2 focus:ring-${color}-300" 
                                       rows="3"
                                       onchange="actualizarCompetencia('${tipo}', ${index}, 'deskribapena', this.value)"
                                       placeholder="Deskribatu kompetentzia hau...">${comp.deskribapena || ''}</textarea>
+                            
+                            <div class="mt-3 text-xs text-gray-500 flex justify-between">
+                                <span>${comp.data_sartze ? `Data: ${comp.data_sartze}` : ''}</span>
+                                <span>${comp.egilea ? `Egilea: ${comp.egilea}` : ''}</span>
+                            </div>
                         </div>
                         <button onclick="eliminarCompetencia('${tipo}', ${index})" 
-                                class="text-red-400 hover:text-red-600 p-2">
+                                class="text-red-400 hover:text-red-600 p-2 ml-4">
                             <i class="fas fa-trash"></i>
                         </button>
-                    </div>
-                    <div class="mt-3 text-xs text-gray-500 flex justify-between">
-                        <span>${comp.data_sartze ? `Data: ${comp.data_sartze}` : ''}</span>
-                        <span>${comp.egilea ? `Egilea: ${comp.egilea}` : ''}</span>
                     </div>
                 </div>
             `;
         });
         
         html += '</div>';
+        competenciasContainer.innerHTML = html;
     }
     
-    html += `
-        <div class="mt-6 pt-4 border-t border-gray-200">
-            <button onclick="añadirCompetencia('${tipo}')" 
-                    class="w-full ${tipo === 'ingreso' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white px-6 py-3 rounded-lg font-medium flex items-center justify-center">
-                <i class="fas fa-plus mr-2"></i>Gehitu Kompetentzia Berria
-            </button>
-        </div>
-    </div>
-    `;
-    
-    // Mostrar en el contenedor
-    document.getElementById('unitsContainer').innerHTML = html;
-    document.getElementById('noUnitsMessage').classList.add('hidden');
-    
-    console.log(`✅ Editor de competencias ${tipo} mostrado`);
+    console.log(`✅ Editor de competencias ${tipo} mostrado en nuevo panel`);
 };
+
+// 🔥 FUNCIÓN PARA EXPORTAR COMPETENCIAS (si no la tienes)
+function exportarCompetencias(tipo) {
+    const competenciasKey = tipo === 'ingreso' ? 'kompetentziak_ingreso' : 'kompetentziak_egreso';
+    const competencias = window.curriculumData[competenciasKey] || [];
+    
+    if (competencias.length === 0) {
+        window.showToast?.('❌ Ez dago kompetentziarik esportatzeko', 'error');
+        return;
+    }
+    
+    const dataStr = JSON.stringify(competencias, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kompetentziak_${tipo}_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    window.showToast?.('📥 Kompetentziak esportatuta', 'success');
+}
 
 // 🔥 FUNCIONES AUXILIARES PARA COMPETENCIAS
 window.añadirCompetencia = function(tipo) {
@@ -4243,6 +4308,7 @@ function obtenerGradosDelCurriculum() {
             }
                     })();
  
+
 
 
 
