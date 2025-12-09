@@ -1047,7 +1047,26 @@ function setUILoginState(isLoggedIn, user = null) {
             document.getElementById('unitsContainer').innerHTML = html;
             document.getElementById('noUnitsMessage').classList.add('hidden');
         }
-        
+
+// 🔥 FUNCIÓN PARA CAMBIAR ENTRE PANELES
+window.mostrarPanel = function(panelId) {
+    // Lista de todos los paneles
+    const paneles = ['welcomeEditor', 'editorPanel', 'competenciasPanel'];
+    
+    // Ocultar todos
+    paneles.forEach(id => {
+        const panel = document.getElementById(id);
+        if (panel) panel.classList.add('hidden');
+    });
+    
+    // Mostrar el solicitado
+    const panelAMostrar = document.getElementById(panelId);
+    if (panelAMostrar) {
+        panelAMostrar.classList.remove('hidden');
+        console.log(`✅ Mostrando panel: ${panelId}`);
+    }
+};
+
         // 🔥 ACTUALIZAR COMPETENCIA GLOBAL
         window.updateCompetenciaGlobal = function(competenciasKey, index, campo, valor) {
             if (!window.curriculumData[competenciasKey]) return;
@@ -2741,21 +2760,20 @@ window.onDegreeChange = function() {
         // Determinar tipo
         const tipo = selectedValue === 'kompetentziak_ingreso' ? 'ingreso' : 'egreso';
         
+        // 🔥 MOSTRAR PANEL DE COMPETENCIAS
+        if (typeof window.mostrarPanel === 'function') {
+            window.mostrarPanel('competenciasPanel');
+        }
+        
         // 🔥 LLAMAR A LA FUNCIÓN ESPECIALIZADA
         if (typeof window.mostrarEditorCompetencias === 'function') {
             window.mostrarEditorCompetencias(tipo);
         } else {
             console.error('❌ mostrarEditorCompetencias no está definida');
-            // Fallback: usar función genérica si existe
-            if (typeof window.showCompetenciasGlobales === 'function') {
-                window.showCompetenciasGlobales(tipo);
-            } else {
-                window.showToast?.('❌ Editor de competencias no disponible', 'error');
-                // Volver al editor normal como fallback
-                window.selectedDegree = selectedValue;
-                window.selectedYear = null;
-                window.selectedSubjectIndex = null;
-                window.resetEditor();
+            window.showToast?.('❌ Editor de competencias no disponible', 'error');
+            // Volver al welcome
+            if (typeof window.mostrarPanel === 'function') {
+                window.mostrarPanel('welcomeEditor');
             }
         }
         
@@ -2766,11 +2784,27 @@ window.onDegreeChange = function() {
     window.selectedDegree = selectedValue;
     window.selectedYear = null;
     window.selectedSubjectIndex = null;
+    
+    // Renderizar años y mostrar editor de asignaturas
     window.renderYears();
     document.getElementById('subjectList').innerHTML = '<li class="p-3 text-gray-500 text-sm italic">Aukeratu maila bat irakasgaiak ikusteko.</li>';
-    window.resetEditor();
+    
+    // 🔥 MOSTRAR EDITOR DE ASIGNATURAS (si hay grado seleccionado)
+    if (selectedValue) {
+        if (typeof window.mostrarPanel === 'function') {
+            window.mostrarPanel('editorPanel');
+        }
+        // Mostrar mensaje de bienvenida en el editor
+        const subjectTitle = document.getElementById('subjectTitle');
+        const subjectType = document.getElementById('subjectType');
+        if (subjectTitle) subjectTitle.textContent = 'Irakasgai bat aukeratu';
+        if (subjectType) subjectType.textContent = 'Gradua: ' + selectedValue;
+    } else {
+        // Si no hay selección, volver al welcome
+        window.resetEditor();
+    }
 };
-             
+                
 // 🔥 EDITOR ESPECIALIZADO PARA COMPETENCIAS
 window.mostrarEditorCompetencias = function(tipo) {
     console.log(`🎨 Mostrando editor especializado para competencias ${tipo}`);
@@ -3039,10 +3073,42 @@ window.renderYears = function() {
             }
         };
 
-        window.resetEditor = function() {
-            document.getElementById('welcomeEditor').classList.remove('hidden');
-            document.getElementById('editorPanel').classList.add('hidden');
-        }
+window.resetEditor = function() {
+    console.log('🔄 Reiniciando editor...');
+    
+    // 🔥 MOSTRAR PANEL DE BIENVENIDA
+    if (typeof window.mostrarPanel === 'function') {
+        window.mostrarPanel('welcomeEditor');
+    } else {
+        // Fallback si la función no existe
+        document.getElementById('welcomeEditor').classList.remove('hidden');
+        document.getElementById('editorPanel').classList.add('hidden');
+        document.getElementById('competenciasPanel').classList.add('hidden');
+    }
+    
+    // Resetear selecciones
+    window.selectedSubjectIndex = null;
+    
+    // Actualizar lista de asignaturas
+    window.renderSubjects();
+    
+    // Limpiar campos del editor
+    const clearFields = ['subjectNameEdit', 'subjectArea', 'subjectCreditsEdit', 'subjectRAs', 'unitName', 'unitContent'];
+    clearFields.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.value = '';
+    });
+    
+    // Limpiar contenedor de unidades
+    const unitsContainer = document.getElementById('unitsContainer');
+    if (unitsContainer) unitsContainer.innerHTML = '';
+    
+    // Mostrar mensaje de no unidades
+    const noUnitsMsg = document.getElementById('noUnitsMessage');
+    if (noUnitsMsg) noUnitsMsg.classList.remove('hidden');
+    
+    console.log('✅ Editor reiniciado');
+};
 
         window.updateSubjectData = function(key, value) {
             const subject = window.getSelectedSubject();
@@ -4177,6 +4243,7 @@ function obtenerGradosDelCurriculum() {
             }
                     })();
  
+
 
 
 
