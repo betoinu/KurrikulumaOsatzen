@@ -256,17 +256,17 @@ window.setupEventListeners = function() {
     console.log('🔌 setupEventListeners ejecutando...');
 
     // 🔥 VERIFICAR FUNCIONES REQUERIDAS
-        const funcionesRequeridas = [
-            'addUnit', 'onDegreeChange', 'downloadJsonData', 'uploadJsonFile',
-            'updateSubjectName', 'updateSubjectData', 'updateSubjectCredits', 
-            'updateSubjectRAs', 'normalizeData', 'initializeUI', 'saveCurriculumData'
-        ];
-        
-        funcionesRequeridas.forEach(func => {
-            if (typeof window[func] !== 'function') {
-                console.warn(`⚠️ Función no definida: ${func}`);
-            }
-        });
+    const funcionesRequeridas = [
+        'addUnit', 'onDegreeChange', 'downloadJsonData', 'uploadJsonFile',
+        'updateSubjectName', 'updateSubjectData', 'updateSubjectCredits', 
+        'updateSubjectRAs', 'normalizeData', 'initializeUI', 'saveCurriculumData'
+    ];
+    
+    funcionesRequeridas.forEach(func => {
+        if (typeof window[func] !== 'function') {
+            console.warn(`⚠️ Función no definida: ${func}`);
+        }
+    });
     
     // EGIAZTATU ELEMENTUAK EXISTITZEN DIREN
     const elements = {
@@ -354,7 +354,7 @@ window.setupEventListeners = function() {
         });
     }
     
-    // JSON FITXATEGIA
+    // JSON FITXATEGIA - VERSIÓN CORREGIDA
     if (elements.jsonFileInput) {
         elements.jsonFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -364,69 +364,53 @@ window.setupEventListeners = function() {
             reader.onload = function(e) {
                 try {
                     const parsedData = JSON.parse(e.target.result);
+                    
+                    // 🔥 NORMALIZAR Y ASIGNAR
                     window.curriculumData = window.normalizeData ? 
                         window.normalizeData(parsedData) : parsedData;
- // 🔥 INICIALIZAR MATRICES SI ES NECESARIO
-        if (window.inicializarMatricesSegura) {
-            window.inicializarMatricesSegura();
-        } else if (window.inicializarSistemaMatrices && !window.curriculumData.matrices) {
-            window.inicializarSistemaMatrices();
-        }
-        
-        if (window.initializeUI) window.initializeUI();
-        if (window.showToast) window.showToast('✅ JSON kargatuta!', 'success');
-        
-        // 🔥 GUARDAR SOLO SI HAY USUARIO AUTENTICADO
-        setTimeout(() => {
-            if (window.saveCurriculumData && window.supabase) {
-                window.supabase.auth.getUser().then(({ data: { user } }) => {
-                    if (user) {
-                        window.saveCurriculumData();
+                    
+                    // 🔥 INICIALIZAR MATRICES SI ES NECESARIO
+                    if (window.inicializarMatricesSegura) {
+                        window.inicializarMatricesSegura();
+                    } else if (window.inicializarSistemaMatrices && window.curriculumData && !window.curriculumData.matrices) {
+                        window.inicializarSistemaMatrices();
                     }
-                });
-            }
-        }, 1500);
-        
-    } catch (error) {
-        console.error('❌ Error cargando JSON:', error);
-        if (window.showToast) window.showToast('❌ JSON errorea: ' + error.message, 'error');
+                    
+                    // 🔥 INICIALIZAR UI
+                    if (window.initializeUI) {
+                        window.initializeUI();
+                    }
+                    
+                    // 🔥 NOTIFICAR
+                    if (window.showToast) {
+                        window.showToast('✅ JSON kargatuta!', 'success');
+                    }
+                    
+                    // 🔥 GUARDAR SOLO SI HAY USUARIO AUTENTICADO
+                    setTimeout(() => {
+                        if (window.saveCurriculumData && window.supabase) {
+                            window.supabase.auth.getUser().then(({ data: { user } }) => {
+                                if (user) {
+                                    window.saveCurriculumData();
+                                }
+                            });
+                        }
+                    }, 1500);
+                    
+                } catch (error) {
+                    console.error('❌ Error cargando JSON:', error);
+                    if (window.showToast) {
+                        window.showToast('❌ JSON errorea: ' + error.message, 'error');
+                    }
+                }
+            };
+            reader.readAsText(file);
+        });
     }
-};
     
-        
-        // 🔥 NORMALIZAR PRIMERO
-        window.curriculumData = window.normalizeData ? 
-            window.normalizeData(parsed) : parsed;
-        
-        // 🔥 INICIALIZAR MATRICES SI EXISTEN
-        if (window.inicializarSistemaMatrices && window.curriculumData && !window.curriculumData.matrices) {
-            window.inicializarSistemaMatrices();
-        }
-        
-        // 🔥 INICIALIZAR UI
-        if (window.initializeUI) {
-            window.initializeUI();
-        }
-        
-        if (window.showToast) window.showToast('✅ JSON kargatuta!', 'success');
-        
-        // 🔥 GUARDAR AUTOMÁTICAMENTE (con timeout para evitar sobrecarga)
-        setTimeout(() => {
-            if (window.saveCurriculumData && window.supabase) {
-                supabase.auth.getUser().then(({data: { user }}) => {
-                    if (user) {
-                        window.saveCurriculumData();
-                    }
-                });
-            }
-        }, 1500);
-        
-    } catch (error) {
-        console.error('❌ Error cargando JSON:', error);
-        if (window.showToast) window.showToast('❌ JSON errorea: ' + error.message, 'error');
-    }
-};  
-               
+    console.log('✅ Event listeners configurados');
+}; // 🔥 CIERRE DE LA FUNCIÓN
+              
         function isAdmin(user) {
             return user && ADMIN_EMAILS.includes(user.email);
         }
@@ -3927,6 +3911,7 @@ function obtenerGradosDelCurriculum() {
             }
                     })();
  
+
 
 
 
