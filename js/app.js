@@ -4427,7 +4427,153 @@ function obtenerGradosDelCurriculum() {
     );
 }
 
-        // ALDATU DOMContentLoaded:
+// ====== ACCESO MINIMALISTA A COMPETENCIAS ======
+function añadirAccesoCompetenciasMinimalista() {
+    const aside = document.querySelector('aside');
+    const degreeSelect = document.getElementById('degreeSelect');
+    
+    if (!aside || !degreeSelect || !degreeSelect.value) return;
+    if (degreeSelect.value === '' || degreeSelect.value.includes('kompetentzia')) return;
+    if (document.getElementById('accesoMinimalistaCompetencias')) return;
+    
+    const contenedor = document.createElement('div');
+    contenedor.id = 'accesoMinimalistaCompetencias';
+    contenedor.className = 'mt-8 pt-6 border-t border-gray-200';
+    
+    contenedor.innerHTML = `
+        <div class="text-sm font-medium text-gray-700 mb-3">Konpetentziak azkar:</div>
+        <div class="flex flex-col gap-2">
+            <button onclick="abrirModalCompetencias('ingreso')"
+                    class="flex items-center justify-between px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition text-sm"
+                    title="Sarrerako konpetentziak ikusi">
+                <div class="flex items-center">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    <span>Sarrerakoak</span>
+                </div>
+                <i class="fas fa-external-link-alt text-xs"></i>
+            </button>
+            
+            <button onclick="abrirModalCompetencias('egreso')"
+                    class="flex items-center justify-between px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm"
+                    title="Irteerako konpetentziak ikusi">
+                <div class="flex items-center">
+                    <i class="fas fa-sign-out-alt mr-2"></i>
+                    <span>Irteerakoak</span>
+                </div>
+                <i class="fas fa-external-link-alt text-xs"></i>
+            </button>
+        </div>
+    `;
+    
+    const subjectList = document.getElementById('subjectList');
+    if (subjectList && subjectList.parentNode) {
+        subjectList.parentNode.insertBefore(contenedor, subjectList);
+    }
+}
+
+function abrirModalCompetencias(tipo) {
+    const competencias = window.curriculumData[`konpetentziak_${tipo}`] || [];
+    const titulo = tipo === 'ingreso' ? 'Sarrerako Konpetentziak' : 'Irteerako Konpetentziak';
+    const color = tipo === 'ingreso' ? 'green' : 'blue';
+    
+    const modal = document.createElement('div');
+    modal.id = 'modalCompetenciasMinimalista';
+    modal.className = 'fixed inset-0 z-50';
+    
+    modal.innerHTML = `
+        <div class="absolute inset-0 bg-black bg-opacity-50" onclick="cerrarModalCompetencias()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col">
+                <!-- Header -->
+                <div class="flex items-center justify-between p-6 border-b">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">${titulo}</h3>
+                        <p class="text-gray-600 text-sm mt-1">
+                            ${competencias.length} konpetentzia
+                        </p>
+                    </div>
+                    <button 
+                        onclick="cerrarModalCompetencias()"
+                        class="text-gray-400 hover:text-gray-600 text-xl"
+                    >
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- Contenido -->
+                <div class="flex-1 overflow-y-auto p-6">
+                    ${competencias.length > 0 ? `
+                        <div class="space-y-4">
+                            ${competencias.map((comp, i) => `
+                                <div class="border-l-4 border-${color}-500 pl-4 py-3 bg-${color}-50">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="font-mono font-bold text-${color}-700">
+                                                ${comp.kodea || `K${i+1}`}
+                                            </div>
+                                            <div class="text-gray-700 mt-2 whitespace-pre-line">
+                                                ${comp.deskribapena || 'Deskribapenik gabe'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div class="text-center py-12">
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 text-gray-400 mb-4">
+                                <i class="fas fa-clipboard-list text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-medium text-gray-700 mb-2">Ez daude konpetentziak</h4>
+                            <p class="text-gray-500">Gehitu konpetentziak curriculumaren atalean</p>
+                        </div>
+                    `}
+                </div>
+                
+                <!-- Footer -->
+                <div class="p-6 border-t">
+                    <button 
+                        onclick="cerrarModalCompetencias()"
+                        class="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
+                    >
+                        Itxi
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalCompetencias() {
+    const modal = document.getElementById('modalCompetenciasMinimalista');
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = '';
+    }
+}
+
+// Integrar con onDegreeChange
+const originalOnDegreeChange = window.onDegreeChange;
+if (originalOnDegreeChange) {
+    window.onDegreeChange = function(event) {
+        originalOnDegreeChange.call(this, event);
+        
+        setTimeout(() => {
+            const selectedValue = event?.target?.value || document.getElementById('degreeSelect').value;
+            if (selectedValue && !selectedValue.includes('kompetentzia')) {
+                const existente = document.getElementById('accesoMinimalistaCompetencias');
+                if (existente) existente.remove();
+                añadirAccesoCompetenciasMinimalista();
+            }
+        }, 500);
+    };
+}
+
+
+// ALDATU DOMContentLoaded:
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOM Cargado - Inicialización segura');
             
@@ -4743,3 +4889,4 @@ function obtenerGradosDelCurriculum() {
                 }
             }
                     })();
+
