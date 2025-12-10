@@ -3176,54 +3176,8 @@ window.initializeUI = function() {
             separator.style.fontSize = '12px';
             separator.style.padding = '4px 0';
             degreeSelect.appendChild(separator);
-        }
-        
-        // 🔥 PASO 3: AÑADIR COMPETENCIAS DE INGRESO (SI EXISTEN)
-        if (window.curriculumData.kompetentziak_ingreso !== undefined) {
-            const optionIngreso = document.createElement('option');
-            optionIngreso.value = 'kompetentziak_ingreso';
-            optionIngreso.textContent = '🎯 Sarrerako kompetentziak';
-            optionIngreso.style.color = '#3B82F6';
-            optionIngreso.style.fontWeight = '600';
-            optionIngreso.style.backgroundColor = '#EFF6FF';
-            degreeSelect.appendChild(optionIngreso);
-            console.log('✅ Añadido: Sarrerako kompetentziak');
-        }
-        
-        // 🔥 PASO 4: AÑADIR COMPETENCIAS DE EGRESO (SI EXISTEN)
-        if (window.curriculumData.kompetentziak_egreso !== undefined) {
-            const optionEgreso = document.createElement('option');
-            optionEgreso.value = 'kompetentziak_egreso';
-            optionEgreso.textContent = '🎓 Irteerako kompetentziak';
-            optionEgreso.style.color = '#10B981';
-            optionEgreso.style.fontWeight = '600';
-            optionEgreso.style.backgroundColor = '#ECFDF5';
-            degreeSelect.appendChild(optionEgreso);
-            console.log('✅ Añadido: Irteerako kompetentziak');
-        }
-        
-        if (gradosEncontrados.length === 0 && 
-            !window.curriculumData.kompetentziak_ingreso && 
-            !window.curriculumData.kompetentziak_egreso) {
-            console.warn('⚠️ No se encontraron grados ni competencias.');
-        }
-        
-        // Restaurar selección si existe
-        if (window.selectedDegree) {
-            degreeSelect.value = window.selectedDegree;
-        }
-    }
-    
-    // Mostrar navegación
-    const navPanel = document.getElementById('navigationPanel');
-    if (navPanel) navPanel.classList.remove('hidden');
-    
-    // Llenar select de eremuak
-    if (typeof llenarSelectEremuakConEditor === 'function') {
-        setTimeout(llenarSelectEremuakConEditor, 500);
-    }
-    
-    console.log('✅ UI inicializada');
+        }      
+        console.log('✅ UI inicializada');
 };
 
 // --- UI Funtzio Laguntzaileak (window objektuan gordeta) ---
@@ -4904,6 +4858,7 @@ if (originalOnDegreeChange) {
                 }
             }
                     })();
+
 
 
 
