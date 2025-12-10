@@ -4433,7 +4433,7 @@ function añadirAccesoCompetenciasMinimalista() {
     const degreeSelect = document.getElementById('degreeSelect');
     
     if (!aside || !degreeSelect || !degreeSelect.value) return;
-    if (degreeSelect.value === '' || degreeSelect.value.includes('kompetentzia')) return;
+    if (degreeSelect.value === '' || degreeSelect.value.includes('konpetentzia')) return;
     if (document.getElementById('accesoMinimalistaCompetencias')) return;
     
     const contenedor = document.createElement('div');
@@ -4563,7 +4563,7 @@ if (originalOnDegreeChange) {
         
         setTimeout(() => {
             const selectedValue = event?.target?.value || document.getElementById('degreeSelect').value;
-            if (selectedValue && !selectedValue.includes('kompetentzia')) {
+            if (selectedValue && !selectedValue.includes('konpetentzia')) {
                 const existente = document.getElementById('accesoMinimalistaCompetencias');
                 if (existente) existente.remove();
                 añadirAccesoCompetenciasMinimalista();
@@ -4889,4 +4889,5 @@ if (originalOnDegreeChange) {
                 }
             }
                     })();
+
 
